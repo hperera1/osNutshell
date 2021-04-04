@@ -3,6 +3,25 @@
 #include <string.h>
 #include <stdbool.h>
 #include "global.h"
+
+char* expandAlias(char* name){
+	for (int i = 0; i < aliasIndex; i++) {
+		if(strcmp(aliasTable.name[i], name) == 0) {
+			return aliasTable.word[i];
+		}
+	}
+	return name;
+}
+
+bool ifAlias(char* name){
+	for (int i = 0; i < aliasIndex; i++) {
+		if(strcmp(aliasTable.name[i], name) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
 %}
 %array
 %option noyywrap
@@ -12,13 +31,35 @@ ANYCHAR		[)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 META		[\<\>\|\"\\\&]
 
 %x string_condition
+%x env_condition
+%x tilde_condition
 %%
 
 <string_condition>{ANYCHAR}+	{yylval.string = strdup(yytext); return STRING;}
 <string_condition>[\"]		{BEGIN(INITIAL);}
 
+<env_condition>{ANYCHAR}+	{
+				yylval.string = strdup(yytext);
+				for (int i = 0; i < variableIndex; i++){
+					if (strcmp(variableTable.var[i], yylval.string) == 0){
+						yylval.string = variableTable.word[i];
+					}
+				} 
+				return STRING;
+				}
+
+<env_condition>[}]		{BEGIN(INITIAL);}
+
 [ ]		{ }
 [\"]		{BEGIN(string_condition);}
+[${]		{BEGIN(env_condition);}
+~{ANYCHAR}*	{
+			char *temp = malloc(strlen(variableTable.word[1]));
+			strcpy(temp, variableTable.word[1]); 
+			yylval.string = strcat(temp, strdup(yytext) + 1);
+			free (temp); 
+			return STRING;
+		}
 bye		{return BYE;}
 testing		{return TESTING;}
 printenv	{return PRINTENV;}
@@ -30,9 +71,18 @@ unalias		{return UNALIAS;}
 "\n"		{return END;}
 
 {CHAR}+		{
-		 printf("yytext: %s\n", yytext);
-		 yylval.string = strdup(yytext);
-		 return STRING;
+		if(ifAlias(yytext)) {
+			printf("yytext: %s\n", yytext);
+			char *yycopy = strdup(expandAlias(yytext));
+			for (int i = strlen(expandAlias(yytext)) - 1; i >= 0; --i)
+				unput(yycopy[i]);
+			free(yycopy);
+		}
+		else {
+			printf("yytext: %s\n", yytext);
+			yylval.string = strdup(yytext);
+			return STRING;
+		};
 		}
 
 %%
