@@ -20,7 +20,7 @@ int listAlias();
 %union {char *string;}
 
 %start cmd_line
-%token <string> BYE TESTING PRINTENV STRING END SETENV UNSETENV CD ALIAS UNALIAS ENVVAR
+%token <string> BYE TESTING PRINTENV STRING END SETENV UNSETENV CD ALIAS UNALIAS 
 
 %%
 cmd_line : 
@@ -33,7 +33,6 @@ cmd_line :
 	| ALIAS STRING STRING END       {setAlias($2, $3); return 1;}
 	| UNALIAS STRING END		{unsetAlias($2); return 1;}
 	| ALIAS END			{listAlias(); return 1;}
-	
 
 %%
 
@@ -107,22 +106,23 @@ int unsetEnv(char *variable)
 
 int changeDirectory(char *directory)
 {
-	printf("%s\n", directory);
 	if (directory[0] != '/')
 	{
-		char *curPath;
+		char *curPath = malloc(strlen(variableTable.word[0]));
 		strcpy(curPath, variableTable.word[0]);
 		strcat(variableTable.word[0], "/");
 		strcat(variableTable.word[0], directory);
-	
+
 		if (chdir(variableTable.word[0]) == 0) //If we succesfully change directories
 		{
+			free(curPath);
 			return 1;
 		}
 		else 
 		{
-			strcpy(variableTable.word[0], curPath); //pwd is the current directory env variable
+			strcpy(variableTable.word[0], variableTable.word[variableIndex]); 
 			printf("Directory not found\n");
+			free(curPath);
 			return 1;
 		}
 	}

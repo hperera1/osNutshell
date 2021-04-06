@@ -45,7 +45,7 @@ int main()
 	system("clear");
 	while(1)
 	{
-		printf("[%s]>> ", variableTable.word[2]);
+		printf("[%s:%s]>> ", variableTable.word[2], variableTable.word[0]);
 		yyparse();
 	}
 
