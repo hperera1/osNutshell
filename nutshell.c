@@ -5,13 +5,10 @@
 #include <limits.h>
 #include "global.h"
 
-char *getcwd(char *buf, size_t size);
-
 int main()
 {
 	aliasIndex = 0;
 	variableIndex = 0;
-	char cwd[PATH_MAX];
 	getcwd(cwd, sizeof(cwd));
 
 	strcpy(variableTable.var[variableIndex], "PWD");
