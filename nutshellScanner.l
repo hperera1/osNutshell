@@ -1,8 +1,10 @@
 %{
 #include "nutshellParser.tab.h"
+#include "global.h"
 #include <string.h>
 #include <stdbool.h>
-#include "global.h"
+#include <unistd.h>
+#include <sys/wait.h>
 
 char* expandAlias(char* name){
 	for (int i = 0; i < aliasIndex; i++) {
@@ -20,6 +22,28 @@ bool ifAlias(char* name){
 		}
 	}
 	return false;
+}
+
+bool ifNotBuiltIn(char *input){
+	pid_t pid;
+	int returnVal;
+	const char slash = '/';
+
+	char *path = strchr(strdup(variableTable.word[3]), slash);
+	strcat(path, "/");
+	strcat(path, input);	
+
+	if((pid = fork()) == -1)
+		perror("fork error!");
+	else if(pid == 0)
+	{
+		returnVal = execl(path, input, NULL);		
+	}
+
+	if(returnVal == -1)
+		return 0;
+	
+	return 1;
 }
 
 %}
@@ -89,6 +113,9 @@ unalias		{BEGIN(unalias_condition);}
 			for (int i = strlen(expandAlias(yytext)) - 1; i >= 0; --i)
 				unput(yycopy[i]);
 			free(yycopy);
+		}
+		else if(ifNotBuiltIn(yytext)) {
+			
 		}
 		else {
 			printf("yytext: %s\n", yytext);
