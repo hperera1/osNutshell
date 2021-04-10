@@ -26,13 +26,13 @@ bool ifAlias(char* name){
 %array
 %option noyywrap
 
-CHAR		[.A-Za-z0-9!\/_-][.A-Za-z0-9!\/_-]*
-ANYCHAR		[)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
+CHAR		[:.A-Za-z0-9!\/_-~][:.A-Za-z0-9!\/_-~]*
+ANYCHAR		[:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 META		[\<\>\|\"\\\&]
 
 %x string_condition
 %x env_condition
-%x tilde_condition
+%x unalias_condition
 %%
 
 <string_condition>{ANYCHAR}+	{yylval.string = strdup(yytext); return STRING;}
@@ -50,14 +50,26 @@ META		[\<\>\|\"\\\&]
 
 <env_condition>[}]		{BEGIN(INITIAL);}
 
+<unalias_condition>{ANYCHAR}+	{
+				printf("yytext: %s\n", yytext);
+				yylval.string = strdup(yytext) + 1; 
+				return UNALIAS;
+				}
+
+<unalias_condition>"\n"		{BEGIN(INITIAL);}
+
+
 [ ]		{ }
 [\"]		{BEGIN(string_condition);}
 [${]		{BEGIN(env_condition);}
 ~{ANYCHAR}*	{
 			char *temp = malloc(strlen(variableTable.word[1]));
-			strcpy(temp, variableTable.word[1]); 
-			yylval.string = strcat(temp, strdup(yytext) + 1);
-			free (temp); 
+			strcpy(temp, variableTable.word[1]);
+			strcat(temp, strdup(yytext) + 1);
+			
+			yylval.string = strdup(temp);
+
+			free(temp);
 			return STRING;
 		}
 bye		{return BYE;}
@@ -67,7 +79,7 @@ setenv		{return SETENV;}
 unsetenv	{return UNSETENV;}
 cd		{return CD;}
 alias		{return ALIAS;}
-unalias		{return UNALIAS;}
+unalias		{BEGIN(unalias_condition);}
 "\n"		{return END;}
 
 {CHAR}+		{
