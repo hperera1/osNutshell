@@ -15,12 +15,14 @@ int changeDirectory(char *directory);
 int setAlias(char *variable, char *word);
 int unsetAlias(char *variable);
 int listAlias();
+int builtInCheck(char *input);
+void testExecl();
 %}
 
 %union {char *string;}
 
 %start cmd_line
-%token <string> BYE TESTING PRINTENV STRING END SETENV UNSETENV CD ALIAS UNALIAS 
+%token <string> BYE TESTING PRINTENV STRING END SETENV UNSETENV CD ALIAS UNALIAS
 
 %%
 cmd_line : 
@@ -33,7 +35,6 @@ cmd_line :
 	| ALIAS STRING STRING END       {setAlias($2, $3); return 1;}
 	| UNALIAS			{unsetAlias($1); return 1;}
 	| ALIAS END			{listAlias(); return 1;}
-
 %%
 
 int yyerror(char *s)
