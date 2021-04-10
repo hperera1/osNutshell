@@ -15,8 +15,10 @@ int changeDirectory(char *directory);
 int setAlias(char *variable, char *word);
 int unsetAlias(char *variable);
 int listAlias();
+int setPath(char *variable, char* word);
 int builtInCheck(char *input);
 void testExecl();
+
 %}
 
 %union {char *string;}
@@ -52,6 +54,12 @@ int testingFunction(char* input)
 
 int setEnv(char *variable, char *word)
 {
+	if(strcmp(variable, "PATH") == 0){
+		printf("Handling Path\n");
+		setPath(variable, word);
+		return 1;
+	}
+	
 	for (int i = 0; i < variableIndex; i++)
 	{
 		if(strcmp(variableTable.var[i], variable)  == 0)
@@ -174,5 +182,44 @@ int listAlias()
 	{
 		printf("%s = %s\n", aliasTable.name[i], aliasTable.word[i]);
 	}
+	return 1;
+}
+
+int setPath(char* variable, char* word)
+{
+	for (int i = 0; i < variableIndex; i++){
+		if(strcmp(variableTable.var[i], variable) == 0)
+		{
+			int counter = 0;
+			for (int j = 0; j < strlen(word); j++){
+				if(strstr(&word[i],":~") == &word[i]){
+					counter++;
+					printf("Counter: %d\n", counter);
+					j++;
+				}
+			}
+			char *tempPath = malloc(strlen(word) + counter*(strlen(variableTable.word[1])+1));
+			char *home_text = malloc(strlen(variableTable.word[1]) + 1);
+			strcpy(home_text, ":");
+			strcpy(&home_text[1], variableTable.word[1]);
+			int iter = 0;
+			
+			while (*word) {
+				if (strstr(word, ":~") == word) {
+					strcpy(&tempPath[iter], home_text);
+					iter += strlen(home_text);
+					word += 2;
+				}
+				else{
+					tempPath[iter++] = *word++;
+				}
+			}
+		tempPath[iter] = '\0';
+		
+		strcpy(variableTable.word[i], tempPath);
+		free(tempPath);	
+
+		}
+	}	
 	return 1;
 }
