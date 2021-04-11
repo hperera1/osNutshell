@@ -29,7 +29,7 @@ void testExecl();
 %%
 cmd_line : 
 	BYE END				{exit(1); return 1;}
-	| TESTING STRING END		{testingFunction($2); return 1;}
+	| TESTING STRING END		{printf("stack val: %s\n", $2); testingFunction($2); return 1;}
 	| SETENV STRING STRING END      {setEnv($2, $3); return 1;}
 	| PRINTENV END			{startPrintenv(); return 1;}
 	| UNSETENV STRING END		{unsetEnv($2); return 1;}
