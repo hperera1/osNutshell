@@ -98,7 +98,7 @@ testing		{return TESTING;}
 				free( yycopy );
 			}
 			else {
-				printf("yytext: %s\n", yytext);
+				printf("yytext (command): %s\n", yytext);
 				yylval.string = strdup(yytext);
 				return CMD;
 		

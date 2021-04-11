@@ -7,6 +7,11 @@
 
 int yylex();
 int yyerror(char *s);
+
+int cmd0();
+int cmd1(char *input1);
+int cmd2(char *input1, char* input2);
+
 int testingFunction(char *input);
 int startPrintenv();
 int setEnv(char *variable, char *word);
@@ -17,7 +22,6 @@ int unsetAlias(char *variable);
 int listAlias();
 int setPath(char *variable, char* word);
 int builtInCheck(char *input);
-void testExecl();
 
 %}
 
@@ -29,15 +33,33 @@ void testExecl();
 %%
 cmd_line : 
 	TESTING STRING END			{testingFunction($2); return 1;}
-	| CMD END				{return 1;}
-	| CMD STRING END			{return 1;}
-	| CMD STRING STRING END			{return 1;}
+	| CMD END				{cmd0(); return 1;}
+	| CMD STRING END			{cmd1($2); return 1;}
+	| CMD STRING STRING END			{cmd2($2, $3); return 1;}
 %%
 
 int yyerror(char *s)
 {
 	printf("%s\n", s);
 	return 0;
+}
+
+int cmd0()
+{
+	printf("single command\n");
+	return 1;
+}
+
+int cmd1(char *input1)
+{
+	printf("command and 1 input string\n");
+	return 1;
+}
+
+int cmd2(char *input1, char *input2)
+{
+	printf("command and 2 input strings\n");
+	return 1;
 }
 
 int testingFunction(char* input)
