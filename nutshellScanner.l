@@ -96,32 +96,14 @@ META		[\<\>\|\"\\\&]
 			free(temp);
 			return STRING;
 		}
-bye		{return BYE;}
 testing		{return TESTING;}
-printenv	{return PRINTENV;}
-setenv		{return SETENV;}
-unsetenv	{return UNSETENV;}
-cd		{return CD;}
-alias		{return ALIAS;}
 unalias		{BEGIN(unalias_condition);}
 "\n"		{return END;}
 
 {CHAR}+		{
-		if(ifAlias(yytext)) {
-			printf("yytext: %s\n", yytext);
-			char *yycopy = strdup(expandAlias(yytext));
-			for (int i = strlen(expandAlias(yytext)) - 1; i >= 0; --i)
-				unput(yycopy[i]);
-			free(yycopy);
-		}
-		else if(ifNotBuiltIn(yytext)) {
-			
-		}
-		else {
-			printf("yytext: %s\n", yytext);
-			yylval.string = strdup(yytext);
-			return STRING;
+		printf("yytext: %s\n", yytext);
+		yylval.string = strdup(yytext);
+		return STRING;
 		};
-		}
 
 %%

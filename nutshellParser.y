@@ -28,15 +28,11 @@ void testExecl();
 
 %%
 cmd_line : 
-	BYE END				{exit(1); return 1;}
-	| TESTING STRING END		{testingFunction($2); return 1;}
-	| SETENV STRING STRING END      {setEnv($2, $3); return 1;}
-	| PRINTENV END			{startPrintenv(); return 1;}
-	| UNSETENV STRING END		{unsetEnv($2); return 1;}
-	| CD STRING END			{changeDirectory($2); return 1;}
-	| ALIAS STRING STRING END       {setAlias($2, $3); return 1;}
-	| UNALIAS			{unsetAlias($1); return 1;}
-	| ALIAS END			{listAlias(); return 1;}
+	UNALIAS END				{unsetAlias($1); return 1;}
+	| TESTING STRING END			{testingFunction($2); return 1;}
+	| STRING END				{return 1;}
+	| STRING STRING END			{return 1;}
+	| STRING STRING STRING END		{return 1;}
 %%
 
 int yyerror(char *s)
