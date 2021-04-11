@@ -8,9 +8,9 @@
 int yylex();
 int yyerror(char *s);
 
-int cmd0();
-int cmd1(char *input1);
-int cmd2(char *input1, char* input2);
+int cmd0(char* command);
+int cmd1(char* command, char *input1);
+int cmd2(char* command, char *input1, char* input2);
 
 int testingFunction(char *input);
 int startPrintenv();
@@ -33,9 +33,9 @@ int builtInCheck(char *input);
 %%
 cmd_line : 
 	TESTING STRING END			{testingFunction($2); return 1;}
-	| CMD END				{cmd0(); return 1;}
-	| CMD STRING END			{cmd1($2); return 1;}
-	| CMD STRING STRING END			{cmd2($2, $3); return 1;}
+	| CMD END				{cmd0($2); return 1;}
+	| CMD STRING END			{cmd1($3,$2); return 1;}
+	| CMD STRING STRING END			{cmd2($4, $3, $2); return 1;}
 %%
 
 int yyerror(char *s)
@@ -44,21 +44,54 @@ int yyerror(char *s)
 	return 0;
 }
 
-int cmd0()
+int cmd0(char* command)
 {
 	printf("single command\n");
+	if(strcmp(command, "printenv") == 0){
+		startPrintenv();
+	}
+	else if(strcmp(command, "alias") == 0){
+		listAlias();
+	}
+	else if(strcmp(command, "bye") == 0){
+		exit(1);
+	}
+	else{
+		printf("unrecognized command: %s\n", command);
+	}
 	return 1;
 }
 
-int cmd1(char *input1)
+int cmd1(char* command, char *input1)
 {
 	printf("command and 1 input string\n");
+	if(strcmp(command, "unsetenv") == 0){
+		unsetEnv(input1);
+	}
+	else if(strcmp(command, "cd") == 0){
+		changeDirectory(input1);
+	}
+	else if(strcmp(command, "unalias") == 0){
+		unsetAlias(input1);
+	}
+	else{
+		printf("unrecongized command: %s\n", command);
+	}
 	return 1;
 }
 
-int cmd2(char *input1, char *input2)
+int cmd2(char* command, char *input1, char *input2)
 {
 	printf("command and 2 input strings\n");
+	if(strcmp(command, "setenv") == 0){
+		setEnv(input1, input2);
+	}
+	else if(strcmp(command, "alias") == 0){
+		setAlias(input1, input2);
+	}
+	else{
+		printf("unrecognized command: %s\n", command);
+	}
 	return 1;
 }
 
