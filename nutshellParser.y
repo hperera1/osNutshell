@@ -28,8 +28,7 @@ void testExecl();
 
 %%
 cmd_line : 
-	UNALIAS END				{unsetAlias($1); return 1;}
-	| TESTING STRING END			{testingFunction($2); return 1;}
+	TESTING STRING END			{testingFunction($2); return 1;}
 	| STRING END				{return 1;}
 	| STRING STRING END			{return 1;}
 	| STRING STRING STRING END		{return 1;}
