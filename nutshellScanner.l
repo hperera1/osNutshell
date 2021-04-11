@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <sys/wait.h>
 
 char* expandAlias(char* name){
 	for (int i = 0; i < aliasIndex; i++) {
@@ -51,7 +50,7 @@ bool ifNotBuiltIn(char *input){
 %option noyywrap
 
 CHAR		[:.A-Za-z0-9!\/_-~][:.A-Za-z0-9!\/_-~]*
-ANYCHAR		[:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
+ANYCHAR		[:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~-][:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~-]*
 META		[\<\>\|\"\\\&]
 
 %x string_condition
@@ -103,6 +102,12 @@ testing		{return TESTING;}
 				return CMD;
 		
 				}
+		}
+
+[ -]{CHAR}+	{
+		printf("yytext: %s\n", yytext);
+		yylval.string = strdup(yytext);
+		return STRING;
 		}
 
 [ ]{CHAR}+	{

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
 #include "global.h"
 
 int yylex();
@@ -34,7 +35,7 @@ int builtInCheck(char *input);
 cmd_line : 
 	TESTING STRING END			{testingFunction($2); return 1;}
 	| CMD END				{cmd0($2); return 1;}
-	| CMD STRING END			{cmd1($3,$2); return 1;}
+	| CMD STRING END			{cmd1($1, $2); return 1;}
 	| CMD STRING STRING END			{cmd2($4, $3, $2); return 1;}
 %%
 
@@ -46,7 +47,6 @@ int yyerror(char *s)
 
 int cmd0(char* command)
 {
-	printf("single command\n");
 	if(strcmp(command, "printenv") == 0){
 		startPrintenv();
 	}
@@ -57,14 +57,38 @@ int cmd0(char* command)
 		exit(1);
 	}
 	else{
-		printf("unrecognized command: %s\n", command);
+		// checking if not built in
+		pid_t pid;
+		int returnVal;
+		const char slash = '/';
+		
+		char *path = strchr(strdup(variableTable.word[3]), slash);
+		strcat(path, "/");
+		strcat(path, command);
+	
+		if((pid = fork()) == -1)
+		{
+			perror("fork error!");
+		}
+		else if(pid == 0)
+		{
+			returnVal = execl(path, command, NULL);
+			exit(1);
+		}
+		else
+		{
+			wait(NULL);
+		}
+
+		if(returnVal == -1)
+			return 0;
 	}
+
 	return 1;
 }
 
 int cmd1(char* command, char *input1)
 {
-	printf("command and 1 input string\n");
 	if(strcmp(command, "unsetenv") == 0){
 		unsetEnv(input1);
 	}
@@ -75,14 +99,39 @@ int cmd1(char* command, char *input1)
 		unsetAlias(input1);
 	}
 	else{
-		printf("unrecongized command: %s\n", command);
+		pid_t pid;
+		int returnVal;
+		const char slash = '/';
+
+		char *path = strchr(strdup(variableTable.word[3]), slash);
+		strcat(path, "/");
+		strcat(path, command);
+
+		if((pid = fork()) == -1)
+		{
+			perror("fork error!");
+		}
+		else if(pid == 0)
+		{
+			returnVal = execl(path, command, input1, NULL);
+			exit(1);
+		}
+		else
+		{
+			wait(NULL);
+		}
+
+		if(returnVal == -1)
+			return 0;
 	}
+
 	return 1;
 }
 
 int cmd2(char* command, char *input1, char *input2)
 {
-	printf("command and 2 input strings\n");
+	printf("1: %s\n2: %s\n3: %s\n", command, input1, input2);
+
 	if(strcmp(command, "setenv") == 0){
 		setEnv(input1, input2);
 	}
@@ -90,8 +139,32 @@ int cmd2(char* command, char *input1, char *input2)
 		setAlias(input1, input2);
 	}
 	else{
-		printf("unrecognized command: %s\n", command);
+		pid_t pid;
+		int returnVal;
+		const char slash = '/';
+		
+		char *path = strchr(strdup(variableTable.word[3]), slash);
+		strcat(path, "/");
+		strcat(path, command);
+
+		if((pid = fork()) == -1)
+		{
+			perror("fork error!");
+		}
+		else if(pid == 0)
+		{
+			returnVal = execl(path, command, input1, input2, NULL);
+			exit(1);
+		}
+		else
+		{
+			wait(NULL);
+		}
+
+		if(returnVal == -1)
+			return 0;
 	}
+
 	return 1;
 }
 
