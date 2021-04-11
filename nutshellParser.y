@@ -36,7 +36,7 @@ cmd_line :
 	TESTING STRING END			{testingFunction($2); return 1;}
 	| CMD END				{cmd0($2); return 1;}
 	| CMD STRING END			{cmd1($1, $2); return 1;}
-	| CMD STRING STRING END			{cmd2($4, $3, $2); return 1;}
+	| CMD STRING STRING END			{cmd2($1, $2, $3); return 1;}
 %%
 
 int yyerror(char *s)

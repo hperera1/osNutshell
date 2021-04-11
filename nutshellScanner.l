@@ -58,7 +58,7 @@ META		[\<\>\|\"\\\&]
 %x unalias_condition
 %%
 
-<string_condition>{ANYCHAR}+	{yylval.string = strdup(yytext); return STRING;}
+<string_condition>{ANYCHAR}+	{yylval.string = strdup(yytext); printf("SC: %s\n", yylval.string); return STRING;}
 <string_condition>[\"]		{BEGIN(INITIAL);}
 
 <env_condition>{ANYCHAR}+	{
@@ -88,8 +88,7 @@ META		[\<\>\|\"\\\&]
 testing		{return TESTING;}
 "\n"		{return END;}
 
-{CHAR}+		{if(ifAlias(yytext)) 
-			{
+{ANYCHAR}+		{if(ifAlias(yytext)) {
 				printf("yytext: %s\n", yytext);
 				char *yycopy = strdup( expandAlias(yytext));
 				for (int i = strlen(expandAlias(yytext)) - 1 ; i >= 0; --i)
@@ -101,19 +100,13 @@ testing		{return TESTING;}
 				yylval.string = strdup(yytext);
 				return CMD;
 		
-				}
+			}
 		}
 
-[ -]{CHAR}+	{
-		printf("yytext: %s\n", yytext);
-		yylval.string = strdup(yytext);
-		return STRING;
-		}
-
-[ ]{CHAR}+	{
-		printf("yytext: %s\n", yytext);
-		yylval.string = strdup(yytext) + 1;
-		return STRING;
+[ ]{ANYCHAR}+	{
+			printf("yytext: %s\n", yytext);
+			yylval.string = strdup(yytext) + 1;
+			return STRING;
 		}
 
 [ ]		{ };
