@@ -24,14 +24,14 @@ void testExecl();
 %union {char *string;}
 
 %start cmd_line
-%token <string> BYE TESTING PRINTENV STRING END SETENV UNSETENV CD ALIAS UNALIAS
+%token <string> TESTING CMD STRING END
 
 %%
 cmd_line : 
 	TESTING STRING END			{testingFunction($2); return 1;}
-	| STRING END				{return 1;}
-	| STRING STRING END			{return 1;}
-	| STRING STRING STRING END		{return 1;}
+	| CMD END				{return 1;}
+	| CMD STRING END			{return 1;}
+	| CMD STRING STRING END			{return 1;}
 %%
 
 int yyerror(char *s)

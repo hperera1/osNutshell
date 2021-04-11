@@ -89,21 +89,23 @@ META		[\<\>\|\"\\\&]
 testing		{return TESTING;}
 "\n"		{return END;}
 
-{CHAR}+		{if(ifAlias(yytext)) {
-			printf("yytext: %s\n", yytext);
-			char *yycopy = strdup( subAliases(yytext));
-			for (int i = strlen(subAliases(yytext)) - 1 ; i >= 0; --i)
-				unput(yycopy[i]);
-			free( yycopy );
-		}
-		else {
-			printf("yytext: %s\n", yytext);
-			yylval.string = strdup(yytext);
-			return STRING;
+{CHAR}+		{if(ifAlias(yytext)) 
+			{
+				printf("yytext: %s\n", yytext);
+				char *yycopy = strdup( expandAlias(yytext));
+				for (int i = strlen(expandAlias(yytext)) - 1 ; i >= 0; --i)
+					unput(yycopy[i]);
+				free( yycopy );
+			}
+			else {
+				printf("yytext: %s\n", yytext);
+				yylval.string = strdup(yytext);
+				return CMD;
 		
+				}
 		}
 
-[]{CHAR}+	{
+[ ]{CHAR}+	{
 		printf("yytext: %s\n", yytext);
 		yylval.string = strdup(yytext) + 1;
 		return STRING;
