@@ -30,18 +30,18 @@ bool ifNotBuiltIn(char *input){
 
 	char *path = strchr(strdup(variableTable.word[3]), slash);
 	strcat(path, "/");
-	strcat(path, input);	
+	strcat(path, input);
 
 	if((pid = fork()) == -1)
 		perror("fork error!");
 	else if(pid == 0)
 	{
-		returnVal = execl(path, input, NULL);		
+		returnVal = execl(path, input, NULL);
 	}
 
 	if(returnVal == -1)
 		return 0;
-	
+
 	return 1;
 }
 
@@ -71,7 +71,7 @@ META		[\<\>\|\"\\\&]
 					if (strcmp(variableTable.var[i], yylval.string) == 0){
 						yylval.string = variableTable.word[i];
 					}
-				} 
+				}
 				return STRING;
 				}
 
@@ -95,7 +95,7 @@ META		[\<\>\|\"\\\&]
 			char *temp = malloc(strlen(variableTable.word[1]));
 			strcpy(temp, variableTable.word[1]);
 			strcat(temp, strdup(yytext) + 1);
-			
+
 			yylval.string = strdup(temp);
 
 			free(temp);
@@ -117,8 +117,8 @@ testing		{return TESTING;}
 			else {
 				printf("yytext (command): %s\n", yytext);
 				yylval.string = strdup(yytext);
-				return CMD;
-		
+				return STRING;
+
 			}
 		}
 
