@@ -23,6 +23,7 @@ int unsetAlias(char *variable);
 int listAlias();
 int setPath(char *variable, char* word);
 int builtInCheck(char *input);
+int isLoop(char* name, char* word);
 
 %}
 
@@ -267,7 +268,19 @@ int setAlias(char *variable, char *word)
 {
 	for(int i = 0; i < aliasIndex; i++)
 	{
-		if(strcmp(aliasTable.name[i], variable) == 0)
+		if(strcmp(variable,word) == 0){
+			printf("Error, expansion of \"%s\" would create a loop.\n", variable);
+			return 1;
+		}
+		else if((strcmp(aliasTable.name[i], variable) == 0) && (strcmp(aliasTable.word[i], word) == 0)){
+			printf("Error, expansion of \"%s\" would create a loop.\n", variable);
+			return 1;
+		}
+		else if(isLoop(variable, word)){
+			printf("Error, expansion of \"%s\" would create a loop.\n", variable);
+			return 1;
+		}
+		else if(strcmp(aliasTable.name[i], variable) == 0)
 		{
 			strcpy(aliasTable.word[i], word);
 			return 1;
@@ -277,6 +290,7 @@ int setAlias(char *variable, char *word)
 	strcpy(aliasTable.name[aliasIndex], variable);
 	strcpy(aliasTable.word[aliasIndex], word);
 	aliasIndex++;
+
 	return 1;
 }
 
@@ -346,3 +360,27 @@ int setPath(char* variable, char* word)
 	}	
 	return 1;
 }
+
+int isLoop(char *name, char* word)
+{
+	char* expansion = malloc(strlen(word));
+	strcpy(expansion, word);
+	char* old_expansion = strdup(" ");
+
+	while(strcmp(old_expansion, expansion)){
+		old_expansion = strdup(expansion);
+
+		for(int i = 0; i < aliasIndex; i++){
+			if(strcmp(aliasTable.name[i], expansion) == 0){
+				expansion = strdup(aliasTable.word[i]);
+				
+			}
+		}
+	}
+
+	if(strcmp(name, expansion) == 0){
+		return 1;
+	}
+
+	return 0;
+} 

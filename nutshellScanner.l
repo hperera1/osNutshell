@@ -50,7 +50,8 @@ bool ifNotBuiltIn(char *input){
 %option noyywrap
 
 CHAR		[:.A-Za-z0-9!\/_-~][:.A-Za-z0-9!\/_-~]*
-ANYCHAR		[:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~-][:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~-]*
+ANYCHAR		[:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~-][:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~-]*
+CHARS		[:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 META		[\<\>\|\"\\\&]
 
 %x string_condition
@@ -58,11 +59,12 @@ META		[\<\>\|\"\\\&]
 %x unalias_condition
 %%
 
-<string_condition>{ANYCHAR}+	{yylval.string = strdup(yytext); printf("SC: %s\n", yylval.string); return STRING;}
+<string_condition>{CHARS}+	{yylval.string = strdup(yytext); printf("SC: %s\n", yylval.string); return STRING;}
 <string_condition>[\"]		{BEGIN(INITIAL);}
 
-<env_condition>{ANYCHAR}+	{
+<env_condition>{CHARS}+		{
 				yylval.string = strdup(yytext);
+				printf("yytext: %s\n", yylval.string);
 				for (int i = 0; i < variableIndex; i++){
 					if (strcmp(variableTable.var[i], yylval.string) == 0){
 						yylval.string = variableTable.word[i];
@@ -74,7 +76,7 @@ META		[\<\>\|\"\\\&]
 <env_condition>[}]		{BEGIN(INITIAL);}
 
 [\"]		{BEGIN(string_condition);}
-[${]		{BEGIN(env_condition);}
+"${"		{BEGIN(env_condition);}
 ~{ANYCHAR}*	{
 			char *temp = malloc(strlen(variableTable.word[1]));
 			strcpy(temp, variableTable.word[1]);
