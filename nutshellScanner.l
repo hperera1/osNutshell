@@ -57,9 +57,11 @@ META		[\<\>\|\"\\\&]
 %x string_condition
 %x env_condition
 %x unalias_condition
+%x subenv_condition
 %%
 
-<string_condition>{CHARS}+	{yylval.string = strdup(yytext); printf("SC: %s\n", yylval.string); return STRING;}
+<string_condition>{CHARS}+	{yylval.string = strdup(yytext); return STRING;}
+<string_condition>"${"		{BEGIN(subenv_condition);}
 <string_condition>[\"]		{BEGIN(INITIAL);}
 
 <env_condition>{CHARS}+		{
@@ -74,6 +76,18 @@ META		[\<\>\|\"\\\&]
 				}
 
 <env_condition>[}]		{BEGIN(INITIAL);}
+
+<subenv_condition>{CHARS}+	{
+				yylval.string = strdup(yytext);
+				for (int i = 0; i < variableIndex; i++){
+					if (strcmp(variableTable.var[i], yylval.string) == 0){
+						yylval.string = variableTable.word[i];
+					}
+				}
+				return STRING;
+				}
+
+<subenv_condition>[}]		{BEGIN(string_condition);}
 
 [\"]		{BEGIN(string_condition);}
 "${"		{BEGIN(env_condition);}

@@ -128,98 +128,52 @@ int cmd0(char* command)
 	return 1;
 }
 
-int cmd1(char* command, char *input1)
-{
-	if(strcmp(command, "unsetenv") == 0){
-		unsetEnv(input1);
-	}
-	else if(strcmp(command, "cd") == 0){
-		changeDirectory(input1);
-	}
-	else if(strcmp(command, "unalias") == 0){
-		unsetAlias(input1);
-	}
-	else{
-		pid_t pid;
-		int returnVal;
-		const char slash = '/';
-
-		char *path = strchr(strdup(variableTable.word[3]), slash);
-		strcat(path, "/");
-		strcat(path, command);
-
-		if((pid = fork()) == -1)
-		{
-			perror("fork error!");
-		}
-		else if(pid == 0)
-		{
-			returnVal = execl(path, command, input1, NULL);
-			exit(1);
-		}
-		else
-		{
-			wait(NULL);
-		}
-
-		if(returnVal == -1)
-			return 0;
-	}
-
-	return 1;
-}
-
-int cmd2(char* command, char *input1, char *input2)
-{
-	printf("1: %s\n2: %s\n3: %s\n", command, input1, input2);
-
-	if(strcmp(command, "setenv") == 0){
-		setEnv(input1, input2);
-	}
-	else if(strcmp(command, "alias") == 0){
-		setAlias(input1, input2);
-	}
-	else{
-		pid_t pid;
-		int returnVal;
-		const char slash = '/';
-		
-		char *path = strchr(strdup(variableTable.word[3]), slash);
-		strcat(path, "/");
-		strcat(path, command);
-
-		if((pid = fork()) == -1)
-		{
-			perror("fork error!");
-		}
-		else if(pid == 0)
-		{
-			returnVal = execl(path, command, input1, input2, NULL);
-			exit(1);
-		}
-		else
-		{
-			wait(NULL);
-		}
-
-		if(returnVal == -1)
-			return 0;
-	}
-
-	return 1;
-}
-
 int cmd(char* command, struct linked_list* args)
 {
 
 	if(strcmp(command, "cd") == 0){
-		changeDirectory(args->head->value);
-	}
-	else if(strcmp(command, "alias") == 0){
+		if(args->length == 1){
+			changeDirectory(args->head->value);
+			return 1;
+		}
+		
+		printf("syntax error");
 		return 1;
 	}
-	else if(strcmp(command, "bye") == 0){
-		exit(1);
+	else if(strcmp(command, "unsetenv") == 0){
+		if(args->length == 1){
+			unsetEnv(args->head->value);
+			return 1;
+		}
+		
+		printf("syntax error");
+		return 1;
+	}
+	else if(strcmp(command, "unalias") == 0){
+		if(args->length == 1){
+			unsetAlias(args->head->value);
+			return 1;
+		}
+		
+		printf("Syntax Error");
+		return 1;
+	}
+	else if(strcmp(command, "setenv") == 0){
+		if(args->length == 2){
+			setAlias(args->head->value, args->head->next->value);
+			return 1;
+		}
+		
+		printf("syntax error");
+		return 1;
+	}
+	else if(strcmp(command, "alias") == 0){
+		if(args->length == 2){
+			setAlias(args->head->value, args->head->next->value);
+			return 1;
+		}
+		printf("syntax error");
+		return 1;
 	}
 	else
 	{
