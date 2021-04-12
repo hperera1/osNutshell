@@ -89,6 +89,9 @@ META		[\<\>\|\"\\\&]
 		}
 testing		{return TESTING;}
 "\n"		{return END;}
+"<"		{yylval.string = strdup(yytext); printf("yytext: %s\n", yylval.string); return IN;}
+">"		{return OUT;}
+"|"		{return TO;}
 
 {ANYCHAR}+		{if(ifAlias(yytext)) {
 				printf("yytext: %s\n", yytext);
@@ -110,7 +113,6 @@ testing		{return TESTING;}
 			yylval.string = strdup(yytext) + 1;
 			return STRING;
 		}
-
 [ ]		{ };
 
 %%
