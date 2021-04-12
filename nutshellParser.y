@@ -42,7 +42,7 @@ void push_back(struct linked_list *list, char* value) {
 int cmd0(char* command);
 int cmd1(char* command, char *input1);
 int cmd2(char* command, char *input1, char* input2);
-int cmd(char* command, struct linked_list *args);
+int cmd(struct linked_list *args);
 
 int testingFunction(struct linked_list *args);
 int startPrintenv();
@@ -66,10 +66,10 @@ int isLoop(char* name, char* word);
 %%
 
 args :	STRING					{push_back($$ = new_list(), $1);}
-	| args STRING					{push_back($$ = $1, $2);}
-	| args IN args 				{}
-	| args OUT args 			{}
-	| args TO args 				{}
+	| args STRING				{push_back($$ = $1, $2);}
+	| args IN args				{}
+	| args OUT args				{}
+	| args TO args				{}
 	;
 
 cmd_line :
@@ -86,81 +86,76 @@ int yyerror(char *s)
 
 int cmd(struct linked_list* args)
 {
-	char* command = args->head->value;
-	args->head = args->head->next;
-	args->length -= 1;
-
-	if(strcmp(command, "printenv") == 0){
-		if(args->length == 0){
+	if(strcmp(args->head->value, "printenv") == 0){
+		if(args->length == 1){
 			startPrintenv();
 			return 1;
 		}
 	}
-	else if(strcmp(command, "alias") == 0){
-	if(args->length == 0){
-		listAlias();
-		return 1;
-	}
-		printf("syntax error");
-		return 1;
-	}
-	else if(strcmp(command, "bye") == 0){
-	if(args->length == 0){
-		exit(1);
-		return 1;
-	}
-
-		printf("syntax error");
-		return 1;
-	}
-	else if(strcmp(command, "cd") == 0){
-	if(args->length == 0){
-		changeDirectory("");
-		return 1;
-	}
-
-		printf("syntax error");
-		return 1;
-	}
-	else if(strcmp(command, "cd") == 0){
+	else if(strcmp(args->head->value, "alias") == 0){
 		if(args->length == 1){
-			changeDirectory(args->head->value);
+			listAlias();
+			return 1;
+		}
+		else if(args->length == 3){
+			setAlias(args->head->next->value, args->head->next->next->value);
+			return 1;
+		}
+			printf("syntax error");
+			return 1;
+	}
+	else if(strcmp(args->head->value, "bye") == 0){
+		if(args->length == 1){
+			exit(1);
 			return 1;
 		}
 
 		printf("syntax error");
 		return 1;
 	}
-	else if(strcmp(command, "unsetenv") == 0){
+	else if(strcmp(args->head->value, "cd") == 0){
 		if(args->length == 1){
-			unsetEnv(args->head->value);
+			changeDirectory("");
+			return 1;
+		}
+		else if(args->length == 2){
+			changeDirectory(args->head->next->value);
+			return 1;
+		}
+
+			printf("syntax error");
+			return 1;
+	}
+	else if(strcmp(args->head->value, "unsetenv") == 0){
+		if(args->length == 2){
+			unsetEnv(args->head->next->value);
 			return 1;
 		}
 
 		printf("syntax error");
 		return 1;
 	}
-	else if(strcmp(command, "unalias") == 0){
-		if(args->length == 1){
-			unsetAlias(args->head->value);
+	else if(strcmp(args->head->value, "unalias") == 0){
+		if(args->length == 2){
+			unsetAlias(args->head->next->value);
 			return 1;
 		}
 
 		printf("Syntax Error");
 		return 1;
 	}
-	else if(strcmp(command, "setenv") == 0){
-		if(args->length == 2){
-			setAlias(args->head->value, args->head->next->value);
+	else if(strcmp(args->head->value, "setenv") == 0){
+		if(args->length == 3){
+			setAlias(args->head->next->value, args->head->next->next->value);
 			return 1;
 		}
 
 		printf("syntax error");
 		return 1;
 	}
-	else if(strcmp(command, "alias") == 0){
-		if(args->length == 2){
-			setAlias(args->head->value, args->head->next->value);
+	else if(strcmp(args->head->value, "alias") == 0){
+		if(args->length == 3){
+			setAlias(args->head->next->value, args->head->next->next->value);
 			return 1;
 		}
 		printf("syntax error");
@@ -174,7 +169,7 @@ int cmd(struct linked_list* args)
 
 		char *path = strchr(strdup(variableTable.word[3]),slash);
 		strcat(path, "/");
-		strcat(path, command);
+		strcat(path, args->head->value);
 
 
 		if((pid = fork()) == -1)
@@ -184,10 +179,8 @@ int cmd(struct linked_list* args)
 		else if(pid == 0)
 		{
 			int counter = 0;
-			char* arguments[args->length+2];
+			char* arguments[args->length+1];
 			struct node* current = args->head;
-			strcpy(arguments[0], current->value);
-			counter += 1;
 			while (current != 0){
 				arguments[counter] = current->value;
 				current = current->next;
