@@ -55,18 +55,20 @@ int listAlias();
 int setPath(char *variable, char* word);
 int builtInCheck(char *input);
 int isLoop(char* name, char* word);
+char* expandEnv(char* text);
 
 %}
 
 %union {char *string; struct linked_list *list;}
 
 %start cmd_line
-%token <string> TESTING CMD STRING END IN OUT TO
+%token <string> TESTING CMD STRING END IN OUT TO ENVSTRING
 %type <list> args
 %%
 
 args :	STRING					{push_back($$ = new_list(), $1);}
 	| args STRING				{push_back($$ = $1, $2);}
+	| args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
 	| args IN args				{}
 	| args OUT args				{}
 	| args TO args				{}
@@ -146,7 +148,7 @@ int cmd(struct linked_list* args)
 	}
 	else if(strcmp(args->head->value, "setenv") == 0){
 		if(args->length == 3){
-			setAlias(args->head->next->value, args->head->next->next->value);
+			setEnv(args->head->next->value, args->head->next->next->value);
 			return 1;
 		}
 
@@ -370,7 +372,7 @@ int setPath(char* variable, char* word)
 		{
 			int counter = 0;
 			for (int j = 0; j < strlen(word); j++){
-				if(strstr(&word[i],":~") == &word[i]){
+				if(strstr(&word[j],":~") == &word[j]){
 					counter++;
 					printf("Counter: %d\n", counter);
 					j++;
@@ -400,6 +402,29 @@ int setPath(char* variable, char* word)
 		}
 	}
 	return 1;
+}
+
+char* expandEnv(char* text){
+	for (int i = 0; i < variableIndex; i++){
+		if(strstr(text, variableTable.var[i]) != 0){
+			char* new_string = malloc(strlen(text) + strlen(variableTable.word[i]) - strlen(variableTable.var[i]));
+			int iter = 0;
+			
+			while (*text) {
+				if(strstr(text, variableTable.var[i]) == text){
+					strcpy(&new_string[iter-2], variableTable.word[i]);
+					iter += strlen(variableTable.word[i]);
+					text += strlen(variableTable.var[i])+1;
+				}
+				else
+					new_string[iter++] = *text++;
+			}
+			
+			new_string[iter] = '\0';
+			return new_string;
+		}
+	}
+	return text;
 }
 
 int isLoop(char *name, char* word)
