@@ -50,46 +50,44 @@ bool ifNotBuiltIn(char *input){
 %option noyywrap
 
 CHAR		[:.A-Za-z0-9!\/_-~][:.A-Za-z0-9!\/_-~]*
-ANYCHAR		[:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~-][:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~-]*
+ANYCHAR		[:)(*&%#@!`;,\.a-zA-Z0-9'/_=~-][:)(*&%#@!`;,\.a-zA-Z0-9'/_=~-]*
+WILD		[/*?][*?]*
 CHARS		[:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 META		[\<\>\|\"\\\&]
 
 %x string_condition
-%s env_condition
+%x env_condition
 %x unalias_condition
 %%
 
-<string_condition>{CHARS}*"${"{CHARS}+"}"{CHARS}*	{
-							printf("we got him\n");
-							yylval.string = strdup( yytext );
-							return ENVSTRING;
+<string_condition>{CHARS}*"${"{CHARS}+"}"{CHARS}*	{yylval.string = strdup( yytext ); return ENVSTRING;}
+
+<string_condition>{CHARS}+				{yylval.string = strdup(yytext); return STRING;}
+<string_condition>[\"]					{BEGIN(INITIAL);}
+
+<env_condition>{CHARS}+					{
+							yylval.string = strdup(yytext);
+							for (int i = 0; i < variableIndex; i++){
+								if (strcmp(variableTable.var[i], yylval.string) == 0){
+									yylval.string = variableTable.word[i];
+								}
+							}
+							return STRING;
 							}
 
-<string_condition>{CHARS}+	{yylval.string = strdup(yytext); return STRING;}
-<string_condition>[\"]		{BEGIN(INITIAL);}
+<env_condition>[}]					{BEGIN(INITIAL);}
 
-<env_condition>{CHARS}+		{
-				yylval.string = strdup(yytext);
-				for (int i = 0; i < variableIndex; i++){
-					if (strcmp(variableTable.var[i], yylval.string) == 0){
-						yylval.string = variableTable.word[i];
-					}
-				}
-				return STRING;
-				}
+[\"]							{BEGIN(string_condition);}
+"${"							{BEGIN(env_condition);}
+[ ]{ANYCHAR}*{WILD}+{ANYCHAR}*				{yylval.string = strdup(yytext) + 1; return WILDCARD;}
+~{ANYCHAR}*						{
+							char *temp = malloc(PATH_MAX*sizeof(char));
+							strcpy(temp, variableTable.word[1]);
+							strcat(temp, strdup(yytext) + 1);
 
-<env_condition>[}]		{BEGIN(INITIAL);}
+							yylval.string = strdup(temp);
 
-[\"]		{BEGIN(string_condition);}
-"${"		{BEGIN(env_condition);}
-~{ANYCHAR}*	{
-			char *temp = malloc(strlen(variableTable.word[1]));
-			strcpy(temp, variableTable.word[1]);
-			strcat(temp, strdup(yytext) + 1);
-
-			yylval.string = strdup(temp);
-
-			free(temp);
+	 		free(temp);
 			return STRING;
 		}
 testing		{return TESTING;}
@@ -112,10 +110,10 @@ testing		{return TESTING;}
 			}
 		}
 
-[ ]{ANYCHAR}+	{
-			yylval.string = strdup(yytext) + 1;
-			return STRING;
-		}
-[ ]		{ };
+[ ]{ANYCHAR}+						{
+							yylval.string = strdup(yytext) + 1;
+							return STRING;
+							}
+[ ]							{ };
 
 %%
