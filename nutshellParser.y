@@ -27,6 +27,7 @@ struct linked_list *new_list() {
 	struct linked_list *rv = malloc(sizeof(struct linked_list));
 	rv -> head = 0;
 	rv ->tail = &rv->head;
+	rv->length = 0;
 	return rv;
 }
 
@@ -62,7 +63,7 @@ void pushback_wildcard(struct linked_list *list, char* wildcard){
 		const char ast = '*';
 		const char que = '?';
 
-		char* new_string = malloc(strlen(wildcard));
+		char* new_string = malloc(PATH_MAX*sizeof(char));
 		for (int i = 0; wildcard[i] != '\0'; ++i){
 			if ((wildcard[i] == ast) || (wildcard[i] == que)){
 				continue;
@@ -123,8 +124,7 @@ pipes:	args IN args				{printf("in args in args\n"); piping = 1; firstPipe = 1; 
 	;
 
 cmd_line :
-	TESTING args END			{testingFunction($2); return 1;}
-	| pipes END				{
+	pipes END				{
 							printf("in pipes end\n"); 
 							//testingFunction($1); 
 							piping = 1;
@@ -155,8 +155,6 @@ cmd_line :
 	| args END				{
 							printf("in args end\n");
 							piping = 0;
-							testingFunction($1);
-
 							if(piping == 0 && donePiping == 1)
 							{
 								donePiping = 0;
@@ -323,53 +321,79 @@ int cmd(struct linked_list* args)
 
 		pid_t pid;
 		int returnVal;
+
 		const char slash = '/';
+		const char colon = ':';
+		int numPaths = 1;
+		int pathIter = 0;
+		char* pathVar = (char*) malloc(PATH_MAX * sizeof(char));
+		pathVar = strdup(variableTable.word[3]);		
 
-		char *path = strchr(strdup(variableTable.word[3]),slash);
-		strcat(path, "/");
-		strcat(path, args->head->value);
-
-		if((pid = fork()) == -1)
-		{
-			perror("fork error!");
+		for (int i = 0; i < strlen(variableTable.word[3]) ; i++){
+			if(pathVar[i] == ':'){
+				numPaths++;
+			} 
 		}
-		else if(pid == 0)
-		{
-			int counter = 0;
-			char* arguments[args->length+1];
-			struct node* current = args->head;
-			while (current != 0){
-				arguments[counter] = current->value;
-				current = current->next;
-				counter += 1;
-			}
-			arguments[counter] = 0;
+
+		for (int i = 0; i < numPaths; i++){
+			int tempIter = 0;
+			char* temp_path = (char*) malloc(PATH_MAX*sizeof(char));
 	
-			if(piping == 1)
-			{
-				dup2(pipeFile2, 1);
-				returnVal = execv(path, arguments);	
-				dup2(savedStd, 1);
-				close(savedStd);
+			while((pathVar[pathIter] != colon) && (pathVar[pathIter] != '\0')){
+				temp_path[tempIter] = pathVar[pathIter];
+				pathIter++;
+				tempIter++;
 			}
-			else if(pipingToFile == 1)
-			{	
-				execv(path, arguments);
+			pathIter++;
+			temp_path[tempIter] = slash;
+			temp_path[tempIter+1] = '\0';
+
+			strcat(&temp_path[tempIter], args->head->value);
+
+			if((pid = fork()) == -1)
+			{
+				perror("fork error!");
+			}
+			else if(pid == 0)
+			{
+				int counter = 0;
+				char* arguments[args->length+1];
+				struct node* current = args->head;
+				while (current != 0){
+					arguments[counter] = current->value;
+					current = current->next;
+					counter += 1;
+				}
+				arguments[counter] = 0;
+	
+				if(piping == 1)
+				{
+					dup2(pipeFile2, 1);
+					returnVal = execv(temp_path, arguments);	
+					dup2(savedStd, 1);
+					close(savedStd);
+				}
+				else
+				{
+					returnVal = execv(temp_path, arguments);
+				}
+
+				exit(1);
 			}
 			else
 			{
-				returnVal = execv(path, arguments);
+				wait(NULL);
 			}
-		}
-		else
-		{
-			wait(NULL);
-		}
+				
+			free(temp_path);
 
-		if(returnVal == -1)
-			return 0;
+			if(returnVal == -1)
+				continue;
+	
+			
+		}
 	}
-
+	
 	return 1;
 }
 
@@ -388,7 +412,6 @@ int testingFunction(struct linked_list* args)
 int setEnv(char *variable, char *word)
 {
 	if(strcmp(variable, "PATH") == 0){
-		printf("Handling Path\n");
 		setPath(variable, word);
 		return 1;
 	}
@@ -541,16 +564,8 @@ int setPath(char* variable, char* word)
 	for (int i = 0; i < variableIndex; i++){
 		if(strcmp(variableTable.var[i], variable) == 0)
 		{
-			int counter = 0;
-			for (int j = 0; j < strlen(word); j++){
-				if(strstr(&word[j],":~") == &word[j]){
-					counter++;
-					printf("Counter: %d\n", counter);
-					j++;
-				}
-			}
-			char *tempPath = malloc(strlen(word) + counter*(strlen(variableTable.word[1])+1));
-			char *home_text = malloc(strlen(variableTable.word[1]) + 1);
+			char* tempPath = (char*)malloc(PATH_MAX*sizeof(char));
+			char* home_text = (char*)malloc(PATH_MAX*sizeof(char));
 			strcpy(home_text, ":");
 			strcpy(&home_text[1], variableTable.word[1]);
 			int iter = 0;
@@ -568,8 +583,9 @@ int setPath(char* variable, char* word)
 		tempPath[iter] = '\0';
 
 		strcpy(variableTable.word[i], tempPath);
+		printf("%s\n", tempPath);
 		free(tempPath);
-
+		free(home_text);
 		}
 	}
 	return 1;
@@ -578,7 +594,7 @@ int setPath(char* variable, char* word)
 char* expandEnv(char* text){
 	for (int i = 0; i < variableIndex; i++){
 		if(strstr(text, variableTable.var[i]) != 0){
-			char* new_string = malloc(strlen(text) + strlen(variableTable.word[i]) - strlen(variableTable.var[i]));
+			char* new_string = (char*)malloc(PATH_MAX*sizeof(char));
 			int iter = 0;
 			
 			while (*text) {
@@ -600,7 +616,7 @@ char* expandEnv(char* text){
 
 int isLoop(char *name, char* word)
 {
-	char* expansion = malloc(strlen(word));
+	char* expansion = (char*)malloc(PATH_MAX*sizeof(char));
 	strcpy(expansion, word);
 	char* old_expansion = strdup(" ");
 
