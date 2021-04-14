@@ -1,4 +1,5 @@
 %{
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,8 +10,7 @@
 int yylex();
 int yyerror(char *s);
 
-
-
+// linked list
 struct node {
 	struct node*	next;
 	char*		value;
@@ -37,13 +37,16 @@ void push_back(struct linked_list *list, char* value) {
 	list->length = list->length + 1;
 }
 
-
-
-int cmd0(char* command);
-int cmd1(char* command, char *input1);
-int cmd2(char* command, char *input1, char* input2);
+// command driving/routing
 int cmd(struct linked_list *args);
 
+// pipe handlers
+char* inHandler(struct linked_list* args1, struct linked_list* args2);
+char* outHandler(struct linked_list* args1, struct linked_list* args2);
+char* pipeHandler(struct linked_list* args1, struct linked_list* args2);
+void copier(char* src, char* dest);
+
+// built in functions including helper/tester functions
 int testingFunction(struct linked_list *args);
 int startPrintenv();
 int setEnv(char *variable, char *word);
@@ -62,21 +65,67 @@ char* expandEnv(char* text);
 %union {char *string; struct linked_list *list;}
 
 %start cmd_line
-%token <string> TESTING CMD STRING END IN OUT TO ENVSTRING
-%type <list> args
+%token <string> TESTING STRING END IN OUT TO ENVSTRING
+%type <list> args pipes
 %%
 
 args :	STRING					{push_back($$ = new_list(), $1);}
 	| args STRING				{push_back($$ = $1, $2);}
-	| args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
-	| args IN args				{}
-	| args OUT args				{}
-	| args TO args				{}
+  | args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
+	;
+
+pipes:	args IN args				{printf("in args in args\n"); piping = 1; firstPipe = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
+	| args OUT args				{printf("in args out args\n"); piping = 1; firstPipe = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+	| args TO args				{printf("in args to args\n"); piping = 1; firstPipe = 1; char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes IN args				{printf("in pipes in args\n"); piping = 1; firstPipe = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes OUT args			{printf("in pipes out args\n"); piping = 1; firstPipe = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes TO args				{char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
 	;
 
 cmd_line :
 	TESTING args END			{testingFunction($2); return 1;}
-	| args END				{cmd($1); return 1;}
+	| pipes END				{
+							printf("in pipes end\n"); 
+							//testingFunction($1); 
+							piping = 1;
+							cmd($1);
+							piping = 0;
+
+							if(piping == 0)
+							{
+								FILE* file;
+								char c;
+								file = fopen("output.txt", "r");
+								c = fgetc(file);
+								while(c != EOF)
+								{
+									printf("%c", c);
+									c = fgetc(file);
+								}
+
+								close(file);
+							}
+
+							fopen("output.txt", "w");
+
+							//remove("input.txt"); 
+							//remove("output.txt"); 
+							return 1;
+						}
+	| args END				{
+							printf("in args end\n");
+							piping = 0;
+							testingFunction($1);
+
+							if(piping == 0 && donePiping == 1)
+							{
+								donePiping = 0;
+							}
+							else
+								cmd($1);
+ 
+							return 1;
+						}
 
 %%
 
@@ -84,6 +133,64 @@ int yyerror(char *s)
 {
 	printf("%s\n", s);
 	return 0;
+}
+
+char* inHandler(struct linked_list* args1, struct linked_list* args2)
+{
+	char* fileName = "input.txt";
+	push_back(args1, args2->head->value);
+
+	cmd(args1);	
+	copier("output.txt", fileName);
+
+	return fileName;
+}
+
+char* outHandler(struct linked_list* args1, struct linked_list* args2)
+{
+	char* fileName = "input.txt";
+
+	testingFunction(args1);
+	testingFunction(args2);
+
+	int savedStd;
+	savedStd = dup(1);
+	pipeFile2 = open(args2->head->value, O_WRONLY|O_CREAT, 0666);	
+	dup2(pipeFile2, 1);
+
+	cmd(args1);	
+	copier(fileName, args2->head->value);
+
+	dup2(savedStd, 1);
+	close(savedStd);
+
+	return fileName;
+}
+
+char* pipeHandler(struct linked_list* args1, struct linked_list* args2)
+{
+	char* fileName = "input.txt";
+
+	// setting flags
+	piping = 1;
+	firstPipe = 1;
+	cmd(args1);
+	firstPipe = 0;
+
+	copier("output.txt", fileName);
+
+	return fileName;
+}
+
+void copier(char* src, char* dest)
+{
+	pid_t pid;
+	if((pid = fork()) == -1)
+		perror("fork error\n");
+	else if(pid == 0)
+		execl("/bin/cp", "cp", src, dest, NULL);
+	else
+		wait(NULL);
 }
 
 int cmd(struct linked_list* args)
@@ -165,6 +272,15 @@ int cmd(struct linked_list* args)
 	}
 	else
 	{
+		int savedStd;
+		savedStd = dup(1);
+
+		if(firstPipe == 1)
+		{
+			pipeFile1 = open("input.txt", O_WRONLY|O_CREAT, 0666);
+			pipeFile2 = open("output.txt", O_WRONLY|O_CREAT, 0666);
+		}
+
 		pid_t pid;
 		int returnVal;
 		const char slash = '/';
@@ -172,7 +288,6 @@ int cmd(struct linked_list* args)
 		char *path = strchr(strdup(variableTable.word[3]),slash);
 		strcat(path, "/");
 		strcat(path, args->head->value);
-
 
 		if((pid = fork()) == -1)
 		{
@@ -189,16 +304,32 @@ int cmd(struct linked_list* args)
 				counter += 1;
 			}
 			arguments[counter] = 0;
-
-			returnVal = execv(path, arguments);
+	
+			if(piping == 1)
+			{
+				dup2(pipeFile2, 1);
+				returnVal = execv(path, arguments);	
+				dup2(savedStd, 1);
+				close(savedStd);
+			}
+			else if(pipingToFile == 1)
+			{	
+				execv(path, arguments);
+			}
+			else
+			{
+				returnVal = execv(path, arguments);
+			}
 		}
-		else{
+		else
+		{
 			wait(NULL);
 		}
 
 		if(returnVal == -1)
 			return 0;
 	}
+
 	return 1;
 }
 
