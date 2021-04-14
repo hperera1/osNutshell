@@ -124,7 +124,8 @@ pipes:	args IN args				{printf("in args in args\n"); piping = 1; firstPipe = 1; 
 	;
 
 cmd_line :
-	pipes END				{
+	TESTING args END			{testingFunction($2); return 1;}
+	| pipes END				{
 							printf("in pipes end\n"); 
 							//testingFunction($1); 
 							piping = 1;

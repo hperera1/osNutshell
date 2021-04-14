@@ -1,5 +1,7 @@
 %{
 #include "nutshellParser.tab.h"
+#include <sys/types.h>
+#include <pwd.h>
 #include "global.h"
 #include <string.h>
 #include <stdbool.h>
@@ -57,7 +59,6 @@ META		[\<\>\|\"\\\&]
 
 %x string_condition
 %x env_condition
-%x unalias_condition
 %%
 
 <string_condition>{CHARS}*"${"{CHARS}+"}"{CHARS}*	{yylval.string = strdup( yytext ); return ENVSTRING;}
@@ -80,15 +81,45 @@ META		[\<\>\|\"\\\&]
 [\"]							{BEGIN(string_condition);}
 "${"							{BEGIN(env_condition);}
 [ ]{ANYCHAR}*{WILD}+{ANYCHAR}*				{yylval.string = strdup(yytext) + 1; return WILDCARD;}
-~{ANYCHAR}*						{
-							char *temp = malloc(PATH_MAX*sizeof(char));
-							strcpy(temp, variableTable.word[1]);
-							strcat(temp, strdup(yytext) + 1);
+~{CHARS}*						{
+							char* temp = malloc(4096);
+							char* entire_string = malloc(4096);
+							char* new_string = malloc(4096);
 
-							yylval.string = strdup(temp);
+							strcpy(entire_string, strdup(yytext) + 1);
 
-							free(temp);
-							return STRING;
+							if(strcmp(entire_string, "") == 0){
+								printf("Easy Case\n");
+								strcpy(new_string, variableTable.word[1]);
+								strcat(new_string, strdup(yytext) + 1);
+						
+								yylval.string = strdup(new_string);
+							}
+							else{		
+								int stringIter = 0;
+								int tempIter = 0;	
+								printf("hard case");				
+
+								while((entire_string[stringIter] != '/') && (entire_string[stringIter] != '\0')){
+									temp[tempIter++] = entire_string[stringIter++];
+								}							
+								temp[tempIter] = '\0';					
+
+								printf("check");
+
+								struct passwd* pwd = getpwnam(temp);
+								strcpy(new_string, pwd->pw_dir);
+								strcpy(temp, &entire_string[stringIter]);
+								strcat(new_string, temp);
+								
+								printf("check");
+								
+								strcpy(yylval.string, new_string);
+								printf("%s\n", yylval.string);
+							}
+								printf("new string: %s\n", yylval.string);
+
+								return STRING;
 							}
 testing							{return TESTING;}
 "\n"							{return END;}
@@ -108,10 +139,8 @@ testing							{return TESTING;}
 
 							}
 							}
-
 [ ]{ANYCHAR}+						{
-							yylval.string = strdup(yytext) + 1;
-							return STRING;
+							yylval.string = strdup(yytext) + 1; return STRING;
 							}
 [ ]							{ };
 
