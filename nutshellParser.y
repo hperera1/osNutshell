@@ -60,18 +60,20 @@ int listAlias();
 int setPath(char *variable, char* word);
 int builtInCheck(char *input);
 int isLoop(char* name, char* word);
+char* expandEnv(char* text);
 
 %}
 
 %union {char *string; struct linked_list *list;}
 
 %start cmd_line
-%token <string> TESTING STRING END IN OUT TO APPEND
+%token <string> TESTING STRING END IN OUT TO ENVSTRING APPEND
 %type <list> args pipes
 %%
 
 args :	STRING					{push_back($$ = new_list(), $1);}
 	| args STRING				{push_back($$ = $1, $2);}
+  | args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
 	;
 
 pipes:	args IN args				{//printf("in args in args\n"); 
@@ -564,7 +566,7 @@ int setPath(char* variable, char* word)
 		{
 			int counter = 0;
 			for (int j = 0; j < strlen(word); j++){
-				if(strstr(&word[i],":~") == &word[i]){
+				if(strstr(&word[j],":~") == &word[j]){
 					counter++;
 					printf("Counter: %d\n", counter);
 					j++;
@@ -594,6 +596,29 @@ int setPath(char* variable, char* word)
 		}
 	}
 	return 1;
+}
+
+char* expandEnv(char* text){
+	for (int i = 0; i < variableIndex; i++){
+		if(strstr(text, variableTable.var[i]) != 0){
+			char* new_string = malloc(strlen(text) + strlen(variableTable.word[i]) - strlen(variableTable.var[i]));
+			int iter = 0;
+			
+			while (*text) {
+				if(strstr(text, variableTable.var[i]) == text){
+					strcpy(&new_string[iter-2], variableTable.word[i]);
+					iter += strlen(variableTable.word[i]);
+					text += strlen(variableTable.var[i])+1;
+				}
+				else
+					new_string[iter++] = *text++;
+			}
+			
+			new_string[iter] = '\0';
+			return new_string;
+		}
+	}
+	return text;
 }
 
 int isLoop(char *name, char* word)
