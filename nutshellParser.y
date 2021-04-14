@@ -1,4 +1,6 @@
 %{
+#include <dirent.h>
+#include <fnmatch.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -37,6 +39,44 @@ void push_back(struct linked_list *list, char* value) {
 	list->length = list->length + 1;
 }
 
+void pushback_wildcard(struct linked_list *list, char* wildcard){
+
+	int num_matches = 0;
+
+	DIR *d;
+	struct dirent *dir;
+	d = opendir(".");
+	if (d) {
+		while ((dir = readdir(d)) != NULL){
+			if(fnmatch(wildcard, dir->d_name, 0) == 0){
+				num_matches += 1;
+				push_back(list, dir->d_name);
+			}
+		}
+		closedir(d);
+	}
+
+	if(num_matches == 0){
+		int iter = 0;
+
+		const char ast = '*';
+		const char que = '?';
+
+		char* new_string = malloc(strlen(wildcard));
+		for (int i = 0; wildcard[i] != '\0'; ++i){
+			if ((wildcard[i] == ast) || (wildcard[i] == que)){
+				continue;
+			}
+			new_string[iter++] = wildcard[i];
+		}
+		new_string[iter] = '\0';
+		strcpy(wildcard, new_string);
+		free(new_string);
+		push_back(list, wildcard);
+	}
+
+}
+
 
 
 int cmd0(char* command);
@@ -62,13 +102,14 @@ char* expandEnv(char* text);
 %union {char *string; struct linked_list *list;}
 
 %start cmd_line
-%token <string> TESTING CMD STRING END IN OUT TO ENVSTRING
+%token <string> TESTING CMD STRING END IN OUT TO ENVSTRING WILDCARD
 %type <list> args
 %%
 
 args :	STRING					{push_back($$ = new_list(), $1);}
 	| args STRING				{push_back($$ = $1, $2);}
 	| args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
+	| args WILDCARD				{pushback_wildcard($$ = $1, $2);}
 	| args IN args				{}
 	| args OUT args				{}
 	| args TO args				{}

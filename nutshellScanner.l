@@ -50,12 +50,13 @@ bool ifNotBuiltIn(char *input){
 %option noyywrap
 
 CHAR		[:.A-Za-z0-9!\/_-~][:.A-Za-z0-9!\/_-~]*
-ANYCHAR		[:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~-][:)(*&%#@!`;,\.a-zA-Z0-9'/*_=~-]*
+ANYCHAR		[:)(*&%#@!`;,\.a-zA-Z0-9'/_=~-][:)(*&%#@!`;,\.a-zA-Z0-9'/_=~-]*
+WILD		[/*?][*?]*
 CHARS		[:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 META		[\<\>\|\"\\\&]
 
 %x string_condition
-%s env_condition
+%x env_condition
 %x unalias_condition
 %%
 
@@ -83,6 +84,7 @@ META		[\<\>\|\"\\\&]
 
 [\"]		{BEGIN(string_condition);}
 "${"		{BEGIN(env_condition);}
+[ ]{ANYCHAR}*{WILD}+{ANYCHAR}*				{yylval.string = strdup(yytext) + 1; return WILDCARD;}
 ~{ANYCHAR}*	{
 			char *temp = malloc(strlen(variableTable.word[1]));
 			strcpy(temp, variableTable.word[1]);
@@ -115,7 +117,6 @@ testing		{return TESTING;}
 		}
 
 [ ]{ANYCHAR}+	{
-			printf("yytext: %s\n", yytext);
 			yylval.string = strdup(yytext) + 1;
 			return STRING;
 		}
