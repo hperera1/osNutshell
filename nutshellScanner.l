@@ -87,27 +87,28 @@ META		[\<\>\|\"\\\&]
 
 							yylval.string = strdup(temp);
 
-							free(temp);
-							return STRING;
-							}
-testing							{return TESTING;}
-"\n"							{return END;}
-"<"							{yylval.string = strdup(yytext); return IN;}
-">"							{return OUT;}
-"|"							{return TO;}
+	 		free(temp);
+			return STRING;
+		}
+testing		{return TESTING;}
+"\n"		{return END;}
+"<"		{yylval.string = strdup(yytext); return IN;}
+">"		{return OUT;}
+">>"		{return APPEND;}
+"|"		{return TO;}
 
-{ANYCHAR}+						{if(ifAlias(yytext)) {
-								char *yycopy = strdup( expandAlias(yytext));
-								for (int i = strlen(expandAlias(yytext)) - 1 ; i >= 0; --i)
-									unput(yycopy[i]);
-								free( yycopy );
-							}
-							else {
-								yylval.string = strdup(yytext);
-								return STRING;
+{ANYCHAR}+		{if(ifAlias(yytext)) {
+				char *yycopy = strdup( expandAlias(yytext));
+				for (int i = strlen(expandAlias(yytext)) - 1 ; i >= 0; --i)
+					unput(yycopy[i]);
+				free( yycopy );
+			}
+			else {
+				yylval.string = strdup(yytext);
+				return STRING;
 
-							}
-							}
+			}
+		}
 
 [ ]{ANYCHAR}+						{
 							yylval.string = strdup(yytext) + 1;
