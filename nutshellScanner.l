@@ -96,6 +96,7 @@ testing		{return TESTING;}
 "\n"		{return END;}
 "<"		{yylval.string = strdup(yytext); return IN;}
 ">"		{return OUT;}
+">>"		{return APPEND;}
 "|"		{return TO;}
 
 {ANYCHAR}+		{if(ifAlias(yytext)) {

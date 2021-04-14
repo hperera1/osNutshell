@@ -19,9 +19,8 @@ char cwd[PATH_MAX];
 int pipeFile1;
 int pipeFile2;
 int piping;
-int pipingToFile;
+int appending;
 int firstPipe;
-int donePiping;
 
 int aliasIndex, variableIndex;
 char* subAliases(char* name);
