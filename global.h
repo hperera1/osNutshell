@@ -16,6 +16,12 @@ struct evTable variableTable;
 struct aTable aliasTable;
 char cwd[PATH_MAX];
 
+int pipeFile1;
+int pipeFile2;
+int piping;
+int appending;
+int firstPipe;
+
 int aliasIndex, variableIndex;
 char* subAliases(char* name);
 char *getcwd(char *buf, size_t size);

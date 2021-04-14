@@ -1,4 +1,7 @@
 %{
+#include <dirent.h>
+#include <fnmatch.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,8 +12,7 @@
 int yylex();
 int yyerror(char *s);
 
-
-
+// linked list
 struct node {
 	struct node*	next;
 	char*		value;
@@ -25,6 +27,7 @@ struct linked_list *new_list() {
 	struct linked_list *rv = malloc(sizeof(struct linked_list));
 	rv -> head = 0;
 	rv ->tail = &rv->head;
+	rv->length = 0;
 	return rv;
 }
 
@@ -37,13 +40,56 @@ void push_back(struct linked_list *list, char* value) {
 	list->length = list->length + 1;
 }
 
+void pushback_wildcard(struct linked_list *list, char* wildcard){
 
+	int num_matches = 0;
 
-int cmd0(char* command);
-int cmd1(char* command, char *input1);
-int cmd2(char* command, char *input1, char* input2);
-int cmd(char* command, struct linked_list *args);
+	DIR *d;
+	struct dirent *dir;
+	d = opendir(".");
+	if (d) {
+		while ((dir = readdir(d)) != NULL){
+			if(fnmatch(wildcard, dir->d_name, 0) == 0){
+				num_matches += 1;
+				push_back(list, dir->d_name);
+			}
+		}
+		closedir(d);
+	}
 
+	if(num_matches == 0){
+		int iter = 0;
+
+		const char ast = '*';
+		const char que = '?';
+
+		char* new_string = malloc(PATH_MAX*sizeof(char));
+		for (int i = 0; wildcard[i] != '\0'; ++i){
+			if ((wildcard[i] == ast) || (wildcard[i] == que)){
+				continue;
+			}
+			new_string[iter++] = wildcard[i];
+		}
+		new_string[iter] = '\0';
+		strcpy(wildcard, new_string);
+		free(new_string);
+		push_back(list, wildcard);
+	}
+
+}
+
+// command driving/routing
+int cmd(struct linked_list *args);
+
+// pipe handlers
+char* inHandler(struct linked_list* args1, struct linked_list* args2);
+char* outHandler(struct linked_list* args1, struct linked_list* args2);
+char* pipeHandler(struct linked_list* args1, struct linked_list* args2);
+void appender(char* src, char* dest);
+void copier(char* src, char* dest);
+void printOutput();
+
+// built in functions including helper/tester functions
 int testingFunction(struct linked_list *args);
 int startPrintenv();
 int setEnv(char *variable, char *word);
@@ -55,26 +101,70 @@ int listAlias();
 int setPath(char *variable, char* word);
 int builtInCheck(char *input);
 int isLoop(char* name, char* word);
+char* expandEnv(char* text);
 
 %}
 
 %union {char *string; struct linked_list *list;}
 
 %start cmd_line
-%token <string> TESTING CMD STRING END IN OUT TO
-%type <list> args
+%token <string> TESTING STRING END IN OUT TO ENVSTRING WILDCARD APPEND
+%type <list> args pipes
 %%
 
 args :	STRING					{push_back($$ = new_list(), $1);}
-	| args STRING					{push_back($$ = $1, $2);}
-	| args IN args 				{}
-	| args OUT args 			{}
-	| args TO args 				{}
+	| args STRING				{push_back($$ = $1, $2);}
+  | args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
+  | args WILDCARD				{pushback_wildcard($$ = $1, $2);}
+	;
+
+pipes:	args IN args				{//printf("in args in args\n"); 
+						 piping = 1; firstPipe = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
+	| args OUT args				{//printf("in args out args\n"); 
+						 piping = 1; firstPipe = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+	| args TO args				{//printf("in args to args\n"); 
+						 piping = 1; firstPipe = 1; 
+						 testingFunction($1); testingFunction($3);
+						 char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
+	| args APPEND args			{//printf("in args append args\n"); 
+						 piping = 1; firstPipe = 1; appending = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes IN args				{//printf("in pipes in args\n"); 
+						 piping = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes OUT args			{//printf("in pipes out args\n"); 
+						 piping = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes TO args				{//printf("in pipes to args\n"); 
+						 piping = 1; char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes APPEND args			{//printf("in pipes append args"); 
+						 piping = 1; appending = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
 	;
 
 cmd_line :
-	TESTING args END			{testingFunction($2); return 1;}
-	| args END				{cmd($1); return 1;}
+	| pipes END				{
+							//printf("in pipes end\n"); 
+							piping = 1;
+							cmd($1);
+							piping = 0;
+
+							if(piping == 0)
+							{
+								printOutput();
+							}
+
+							fopen(".output.txt", "w");
+							remove(".input.txt"); 
+							remove(".output.txt"); 
+
+							return 1;
+						}
+	| args END				{
+							//printf("in args end\n");
+							firstPipe = 0;
+							piping = 0;
+							testingFunction($1);
+							cmd($1);
+ 
+							return 1;
+						}
 
 %%
 
@@ -84,83 +174,207 @@ int yyerror(char *s)
 	return 0;
 }
 
+char* inHandler(struct linked_list* args1, struct linked_list* args2)
+{
+	char* fileName = ".input.txt";
+	push_back(args1, args2->head->value);
+	cmd(args1);	
+	copier(".output.txt", fileName);
+
+	return fileName;
+}
+
+char* outHandler(struct linked_list* args1, struct linked_list* args2)
+{
+	char* fileName = ".input.txt";
+
+	testingFunction(args1);
+	testingFunction(args2);
+
+	int savedStd;
+	savedStd = dup(1);
+	//pipeFile2 = open(args2->head->value, O_WRONLY|O_CREAT, 0666);	
+	//dup2(pipeFile2, 1);
+	cmd(args1);
+	
+	if(appending == 1)
+	{
+		copier(".output.txt", fileName);
+		printOutput();
+		appender(fileName, args2->head->value);
+	}
+	else
+	{
+		copier(".output.txt", fileName);
+		copier(fileName, args2->head->value);
+	}
+
+	appending = 0;	
+	fopen(".output.txt", "w");
+	dup2(savedStd, 1);
+	close(savedStd);
+
+	return fileName;
+}
+
+char* pipeHandler(struct linked_list* args1, struct linked_list* args2)
+{
+	char* fileName = ".input.txt";
+
+	// setting flags
+	cmd(args1);
+	firstPipe = 0;
+
+	copier(".output.txt", fileName);
+	fopen(".output.txt", "w");
+
+	return fileName;
+}
+
+void copier(char* src, char* dest)
+{
+	/*
+	int savedStd;
+	int savedErr;
+	savedStd = dup(1);
+	savedErr = dup(2);
+	dup2(savedErr, 1);
+	*/
+
+	pid_t pid;
+	if((pid = fork()) == -1)
+		perror("fork error\n");
+	else if(pid == 0)
+		execl("/bin/cp", "cp", src, dest, NULL);
+	else
+		wait(NULL);
+
+	//dup2(savedStd, 1);
+	//close(savedStd);
+	//close(savedErr);
+}
+
+void appender(char* src, char* dest)
+{
+	FILE* file1;
+	FILE* file2;
+	char c;
+
+	file1 = fopen(src, "r");
+	file2 = fopen(dest, "a");
+
+	if(!file1 && !file2)
+	{
+		printf("appending error\n");
+		return;
+	}
+
+	c = fgetc(file1);
+	while(c != EOF)
+	{
+		fputc(c, file2);
+		c = fgetc(file1);
+	}
+
+	fclose(file1);
+	fclose(file2);
+}
+
+void printOutput()
+{
+	FILE* file;
+	char c;
+	file = fopen(".output.txt", "r");
+	c = fgetc(file);
+	while(c != EOF)
+	{
+		printf("%c", c);
+		c = fgetc(file);
+	}
+
+	fclose(file);
+	fopen(".output.txt", "w");
+}
+
+
 int cmd(struct linked_list* args)
 {
-	char* command = args->head->value;
-	args->head = args->head->next;
-	args->length -= 1;
+	if(firstPipe == 1)
+	{
+		//pipeFile1 = open("input.txt", O_WRONLY|O_CREAT, 0666);
+		//pipeFile2 = open("output.txt", O_WRONLY|O_CREAT, 0666);
+	}
 
-	if(strcmp(command, "printenv") == 0){
-		if(args->length == 0){
+	if(strcmp(args->head->value, "printenv") == 0){
+		if(args->length == 1){
 			startPrintenv();
 			return 1;
 		}
 	}
-	else if(strcmp(command, "alias") == 0){
-	if(args->length == 0){
-		listAlias();
-		return 1;
-	}
-		printf("syntax error");
-		return 1;
-	}
-	else if(strcmp(command, "bye") == 0){
-	if(args->length == 0){
-		exit(1);
-		return 1;
-	}
-
-		printf("syntax error");
-		return 1;
-	}
-	else if(strcmp(command, "cd") == 0){
-	if(args->length == 0){
-		changeDirectory("");
-		return 1;
-	}
-
-		printf("syntax error");
-		return 1;
-	}
-	else if(strcmp(command, "cd") == 0){
+	else if(strcmp(args->head->value, "alias") == 0){
 		if(args->length == 1){
-			changeDirectory(args->head->value);
+			listAlias();
+			return 1;
+		}
+		else if(args->length == 3){
+			setAlias(args->head->next->value, args->head->next->next->value);
+			return 1;
+		}
+			printf("syntax error");
+			return 1;
+	}
+	else if(strcmp(args->head->value, "bye") == 0){
+		if(args->length == 1){
+			exit(1);
 			return 1;
 		}
 
 		printf("syntax error");
 		return 1;
 	}
-	else if(strcmp(command, "unsetenv") == 0){
+	else if(strcmp(args->head->value, "cd") == 0){
 		if(args->length == 1){
-			unsetEnv(args->head->value);
+			changeDirectory("");
+			return 1;
+		}
+		else if(args->length == 2){
+			changeDirectory(args->head->next->value);
+			return 1;
+		}
+
+			printf("syntax error");
+			return 1;
+	}
+	else if(strcmp(args->head->value, "unsetenv") == 0){
+		if(args->length == 2){
+			unsetEnv(args->head->next->value);
 			return 1;
 		}
 
 		printf("syntax error");
 		return 1;
 	}
-	else if(strcmp(command, "unalias") == 0){
-		if(args->length == 1){
-			unsetAlias(args->head->value);
+	else if(strcmp(args->head->value, "unalias") == 0){
+		if(args->length == 2){
+			unsetAlias(args->head->next->value);
 			return 1;
 		}
 
 		printf("Syntax Error");
 		return 1;
 	}
-	else if(strcmp(command, "setenv") == 0){
-		if(args->length == 2){
-			setAlias(args->head->value, args->head->next->value);
+	else if(strcmp(args->head->value, "setenv") == 0){
+		if(args->length == 3){
+			setEnv(args->head->next->value, args->head->next->next->value);
 			return 1;
 		}
 
 		printf("syntax error");
 		return 1;
 	}
-	else if(strcmp(command, "alias") == 0){
-		if(args->length == 2){
-			setAlias(args->head->value, args->head->next->value);
+	else if(strcmp(args->head->value, "alias") == 0){
+		if(args->length == 3){
+			setAlias(args->head->next->value, args->head->next->next->value);
 			return 1;
 		}
 		printf("syntax error");
@@ -168,42 +382,89 @@ int cmd(struct linked_list* args)
 	}
 	else
 	{
+		int savedStd;
+		savedStd = dup(1);
 		pid_t pid;
 		int returnVal;
+
+		if(firstPipe == 1)
+		{
+			pipeFile1 = open(".input.txt", O_WRONLY|O_CREAT, 0666);
+			pipeFile2 = open(".output.txt", O_WRONLY|O_CREAT, 0666);
+		}
+
 		const char slash = '/';
+		const char colon = ':';
+		int numPaths = 1;
+		int pathIter = 0;
+		char* pathVar = (char*) malloc(PATH_MAX * sizeof(char));
+		pathVar = strdup(variableTable.word[3]);		
 
-		char *path = strchr(strdup(variableTable.word[3]),slash);
-		strcat(path, "/");
-		strcat(path, command);
-
-
-		if((pid = fork()) == -1)
-		{
-			perror("fork error!");
+		for (int i = 0; i < strlen(variableTable.word[3]) ; i++){
+			if(pathVar[i] == ':'){
+				numPaths++;
+			} 
 		}
-		else if(pid == 0)
-		{
-			int counter = 0;
-			char* arguments[args->length+2];
-			struct node* current = args->head;
-			strcpy(arguments[0], current->value);
-			counter += 1;
-			while (current != 0){
-				arguments[counter] = current->value;
-				current = current->next;
-				counter += 1;
+
+		for (int i = 0; i < numPaths; i++){
+			int tempIter = 0;
+			char* temp_path = (char*) malloc(PATH_MAX*sizeof(char));
+	
+			while((pathVar[pathIter] != colon) && (pathVar[pathIter] != '\0')){
+				temp_path[tempIter] = pathVar[pathIter];
+				pathIter++;
+				tempIter++;
 			}
-			arguments[counter] = 0;
+			pathIter++;
+			temp_path[tempIter] = slash;
+			temp_path[tempIter+1] = '\0';
 
-			returnVal = execv(path, arguments);
-		}
-		else{
-			wait(NULL);
-		}
+			strcat(&temp_path[tempIter], args->head->value);
 
-		if(returnVal == -1)
-			return 0;
+			if((pid = fork()) == -1)
+			{
+				perror("fork error!");
+			}
+			else if(pid == 0)
+			{
+				int counter = 0;
+				char* arguments[args->length+1];
+				struct node* current = args->head;
+				while (current != 0){
+					arguments[counter] = current->value;
+					current = current->next;
+					counter += 1;
+				}
+				arguments[counter] = 0;
+	
+				if(piping == 1)
+				{
+					dup2(pipeFile2, 1);
+					returnVal = execv(temp_path, arguments);	
+					dup2(savedStd, 1);
+					close(savedStd);
+				}
+				else
+				{
+					returnVal = execv(temp_path, arguments);
+				}
+
+				exit(1);
+			}
+			else
+			{
+				wait(NULL);
+			}
+				
+			free(temp_path);
+
+			if(returnVal == -1)
+				continue;
+	
+			
+		}
 	}
+	
 	return 1;
 }
 
@@ -222,7 +483,6 @@ int testingFunction(struct linked_list* args)
 int setEnv(char *variable, char *word)
 {
 	if(strcmp(variable, "PATH") == 0){
-		printf("Handling Path\n");
 		setPath(variable, word);
 		return 1;
 	}
@@ -375,16 +635,8 @@ int setPath(char* variable, char* word)
 	for (int i = 0; i < variableIndex; i++){
 		if(strcmp(variableTable.var[i], variable) == 0)
 		{
-			int counter = 0;
-			for (int j = 0; j < strlen(word); j++){
-				if(strstr(&word[i],":~") == &word[i]){
-					counter++;
-					printf("Counter: %d\n", counter);
-					j++;
-				}
-			}
-			char *tempPath = malloc(strlen(word) + counter*(strlen(variableTable.word[1])+1));
-			char *home_text = malloc(strlen(variableTable.word[1]) + 1);
+			char* tempPath = (char*)malloc(PATH_MAX*sizeof(char));
+			char* home_text = (char*)malloc(PATH_MAX*sizeof(char));
 			strcpy(home_text, ":");
 			strcpy(&home_text[1], variableTable.word[1]);
 			int iter = 0;
@@ -402,16 +654,40 @@ int setPath(char* variable, char* word)
 		tempPath[iter] = '\0';
 
 		strcpy(variableTable.word[i], tempPath);
+		printf("%s\n", tempPath);
 		free(tempPath);
-
+		free(home_text);
 		}
 	}
 	return 1;
 }
 
+char* expandEnv(char* text){
+	for (int i = 0; i < variableIndex; i++){
+		if(strstr(text, variableTable.var[i]) != 0){
+			char* new_string = (char*)malloc(PATH_MAX*sizeof(char));
+			int iter = 0;
+			
+			while (*text) {
+				if(strstr(text, variableTable.var[i]) == text){
+					strcpy(&new_string[iter-2], variableTable.word[i]);
+					iter += strlen(variableTable.word[i]);
+					text += strlen(variableTable.var[i])+1;
+				}
+				else
+					new_string[iter++] = *text++;
+			}
+			
+			new_string[iter] = '\0';
+			return new_string;
+		}
+	}
+	return text;
+}
+
 int isLoop(char *name, char* word)
 {
-	char* expansion = malloc(strlen(word));
+	char* expansion = (char*)malloc(PATH_MAX*sizeof(char));
 	strcpy(expansion, word);
 	char* old_expansion = strdup(" ");
 

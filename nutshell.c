@@ -7,6 +7,7 @@
 
 int main()
 {
+	piping = 0;
 	aliasIndex = 0;
 	variableIndex = 0;
 	getcwd(cwd, sizeof(cwd));
