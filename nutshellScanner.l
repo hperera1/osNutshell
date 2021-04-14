@@ -66,7 +66,6 @@ META		[\<\>\|\"\\\&]
 
 <env_condition>{CHARS}+		{
 				yylval.string = strdup(yytext);
-				printf("yytext: %s\n", yylval.string);
 				for (int i = 0; i < variableIndex; i++){
 					if (strcmp(variableTable.var[i], yylval.string) == 0){
 						yylval.string = variableTable.word[i];
@@ -103,19 +102,17 @@ META		[\<\>\|\"\\\&]
 		}
 testing		{return TESTING;}
 "\n"		{return END;}
-"<"		{yylval.string = strdup(yytext); printf("yytext: %s\n", yylval.string); return IN;}
+"<"		{yylval.string = strdup(yytext); return IN;}
 ">"		{return OUT;}
 "|"		{return TO;}
 
 {ANYCHAR}+		{if(ifAlias(yytext)) {
-				printf("yytext: %s\n", yytext);
 				char *yycopy = strdup( expandAlias(yytext));
 				for (int i = strlen(expandAlias(yytext)) - 1 ; i >= 0; --i)
 					unput(yycopy[i]);
 				free( yycopy );
 			}
 			else {
-				printf("yytext (command): %s\n", yytext);
 				yylval.string = strdup(yytext);
 				return STRING;
 
@@ -123,7 +120,6 @@ testing		{return TESTING;}
 		}
 
 [ ]{ANYCHAR}+	{
-			printf("yytext: %s\n", yytext);
 			yylval.string = strdup(yytext) + 1;
 			return STRING;
 		}
