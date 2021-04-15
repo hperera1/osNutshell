@@ -80,7 +80,7 @@ META		[\<\>\|\"\\\&]
 
 [\"]							{BEGIN(string_condition);}
 "${"							{BEGIN(env_condition);}
-[ ]{ANYCHAR}*{WILD}+{ANYCHAR}*				{yylval.string = strdup(yytext) + 1; printf("b"); return WILDCARD;}
+[ ]{ANYCHAR}*{WILD}+{ANYCHAR}*				{yylval.string = strdup(yytext) + 1; return WILDCARD;}
 ~{CHARS}*						{
 								char temp[4096];
 								char entire_string[4096];

@@ -5,6 +5,7 @@
 #include <fnmatch.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -566,6 +567,25 @@ int startPrintenv()
 
 int unsetEnv(char *variable)
 {
+	int check = 1;
+	if (strcmp(variable, "PATH") == 0){
+		check = 0;
+	}
+	else if(strcmp(variable, "HOME") == 0){
+		check = 0;
+	}
+	else if(strcmp(variable, "PWD") == 0){
+		check = 0;
+	}
+	else if(strcmp(variable, "PROMPT") == 0){
+		check = 0;
+	}
+
+
+	if(check){
+		printf("Cannot unset environment variable: %s\n", variable);
+		return 1;
+	}
 	for (int i = 0; i < variableIndex; i++)
 	{
 		if(strcmp(variableTable.var[i], variable) == 0)
@@ -596,6 +616,8 @@ int changeDirectory(char *directory)
 
 		if (chdir(variableTable.word[0]) == 0) //If we succesfully change directories
 		{
+			getcwd(cwd, sizeof(cwd));
+			strcpy(variableTable.word[0], cwd);
 			return 1;
 		}
 		else
@@ -610,7 +632,8 @@ int changeDirectory(char *directory)
 	{
 		if (chdir(directory) == 0)
 		{
-			strcpy(variableTable.word[0], directory);
+			getcwd(cwd, sizeof(cwd));
+			strcpy(variableTable.word[0], cwd);
 			return 1;
 		}
 		else
@@ -693,54 +716,58 @@ int setPath(char* variable, char* word)
 			int tempIter = 0;
 			int userIter = 0;
 		
+			new_path[0] = '\0';
+			userName[0] = '\0';
+			tempPath[0] = '\0';
+			entireName[0] = '\0';
 			strcpy(entireName, word);
-			printf("%s\n", new_path);
+			printf("new path: %s, %d\n", new_path, strlen(new_path));
 			printf("%d\n", strlen(entireName));
 
 			for (int j = 0; j < strlen(entireName); j++){
-				printf("Starting j = %d\n", j);
+				//printf("Starting j = %d\n", j);
 				if(word[j] == ':'){
 					if(word[j+1] == '~'){
 						tempPath[tempIter] = entireName[j];
 						tempPath[tempIter + 1] = '\0';
-						printf("temp path before cat: %s\n", tempPath);
+						//printf("temp path before cat: %s\n", tempPath);
 						strcat(new_path, tempPath);
-						printf("new path after cat: %s\n", new_path);
+						//printf("new path after cat: %s\n", new_path);
 
 						strcpy(tempPath, "");
-						printf("temp path after cat: %s\n", tempPath);
+						//printf("temp path after cat: %s\n", tempPath);
 						tempIter = 0;
 
 						//find the userName
 						strcpy(userName, "");
-						printf("Reset username: %s with length %d\n", userName, strlen(userName));
+						//printf("Reset username: %s with length %d\n", userName, strlen(userName));
 						
 						struct passwd* pwd;
 						userIter = 0;
 						for(int k = j+1; k < strlen(word); k++){
-							printf("next char in username: %c\n", word[k]);
+							//printf("next char in username: %c\n", word[k]);
 							if((word[k] == '/') || (word[k] == '0')){
 								break;
 							}
 							strncat(userName,word+k,1);
-							printf("current username: %s\n", userName);
+							//printf("current username: %s\n", userName);
 						}
-						printf("%s with length: %d\n", userName, strlen(userName));
+						//printf("%s with length: %d\n", userName, strlen(userName));
 						j += strlen(userName);
-						printf("picking up on %c at j = %d\n", entireName[j+1], j+1);
+						//printf("picking up on %c at j = %d\n", entireName[j+1], j+1);
 						userName[userIter] = '\0';
-						printf("user name: %s, and size of user name: %d\n", userName, strlen(userName));
+						//printf("user name: %s, and size of user name: %d\n", userName, strlen(userName));
 
 						pwd = getpwnam(userName);
 						if(pwd == NULL){
 							strcat(tempPath, variableTable.word[1]);
 							tempIter += strlen(variableTable.word[1]);
-							printf("temp path b/c null %s\n", tempPath);
+							//printf("temp path b/c null %s\n", tempPath);
 						}
 						else{
 							strcpy(tempPath, pwd->pw_dir);
 							tempIter += strlen(pwd->pw_dir);
-							printf("temp path %s", tempPath);
+							//printf("temp path %s", tempPath);
 						}
 					}
 					else{
@@ -749,7 +776,7 @@ int setPath(char* variable, char* word)
 					}
 				}
 				else{
-					printf("tempIter: %d, charcter being added: %c at j %d\n", tempIter, word[j], j);
+					//printf("tempIter: %d, charcter being added: %c at j %d\n", tempIter, word[j], j);
 					tempPath[tempIter++] = word[j];
 				}
 
@@ -758,7 +785,7 @@ int setPath(char* variable, char* word)
 			tempPath[tempIter] = '\0';
 			strcat(new_path, tempPath);
 
-		printf("%s\n", new_path);
+		printf("Final: %s\n", new_path);
 		strcpy(variableTable.word[i], new_path);
 		}
 	}
@@ -795,11 +822,15 @@ int isLoop(char *name, char* word)
 	char* old_expansion = strdup(" ");
 
 	while(strcmp(old_expansion, expansion)){
+		if(strcmp(name, expansion) == 0){
+			return 1;
+		}
 		old_expansion = strdup(expansion);
 
 		for(int i = 0; i < aliasIndex; i++){
 			if(strcmp(aliasTable.name[i], expansion) == 0){
 				expansion = strdup(aliasTable.word[i]);
+				break;
 
 			}
 		}
