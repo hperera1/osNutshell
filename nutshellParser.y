@@ -124,7 +124,7 @@ args :	STRING					{push_back($$ = new_list(), $1);}
 
 pipes:	args IN args				{//printf("in args in args\n"); 
 						 piping = 1; firstPipe = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
-	| args OUT args				{//printf("in args out args\n"); 
+	| args OUT args				{printf("in args out args\n"); 
 						 piping = 1; firstPipe = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
 	| args TO args				{//printf("in args to args\n"); 
 						 piping = 1; firstPipe = 1; 
@@ -204,7 +204,7 @@ char* outHandler(struct linked_list* args1, struct linked_list* args2)
 	if(appending == 1)
 	{
 		copier(".output.txt", fileName);
-		printOutput();
+		//printOutput();
 		appender(fileName, args2->head->value);
 	}
 	else
@@ -606,10 +606,27 @@ int changeDirectory(char *directory)
 	if (strcmp(directory,"") == 0){
 		chdir(variableTable.word[1]);
 		strcpy(variableTable.word[0], variableTable.word[1]);
+		setAlias(".", variableTable.word[1]);
+		char temp[4096];
+		char parent[4096];
+		strcpy(temp, variableTable.word[1]);
+		strcat(temp, "/..");
+		if (chdir(temp) == 0){
+			getcwd(parent, sizeof(cwd));
+		}
+		else{
+			parent[0] = '\0';
+		}
+		setAlias("..", parent);
+		chdir(variableTable.word[1]);
 		return 1;
 	}
 	else if (directory[0] != '/')
 	{
+		char parent[4096];
+		char cur[4096];
+		char temp[4096];
+
 		strcat(variableTable.word[0], "/");
 		strcat(variableTable.word[0], directory);
 
@@ -617,6 +634,19 @@ int changeDirectory(char *directory)
 		{
 			getcwd(cwd, sizeof(cwd));
 			strcpy(variableTable.word[0], cwd);
+			strcpy(cur, cwd);
+			strcpy(temp, cwd);
+			strcat(temp, "/..");
+			if (chdir(temp) == 0){
+				getcwd(cwd, sizeof(cwd));
+				strcpy(parent, cwd);
+			}		
+			else{
+				parent[0] = '\0';
+			}
+			chdir(cur);
+			setAlias(".", cur);
+			setAlias("..", parent);
 			return 1;
 		}
 		else
@@ -629,10 +659,27 @@ int changeDirectory(char *directory)
 	}
 	else
 	{
+		char parent[4096];
+		char cur[4096];
+		char temp[4096];
+
 		if (chdir(directory) == 0)
 		{
 			getcwd(cwd, sizeof(cwd));
 			strcpy(variableTable.word[0], cwd);
+			strcpy(cur, cwd);
+			strcpy(temp, cwd);
+			strcat(temp, "/..");
+			if (chdir(temp) == 0){
+				getcwd(cwd, sizeof(cwd));
+				strcpy(parent, cwd);
+			}
+			else{
+				parent[0] = '\0';
+			}
+			chdir(cur);
+			setAlias(".", cur);
+			setAlias("..", parent);
 			return 1;
 		}
 		else
