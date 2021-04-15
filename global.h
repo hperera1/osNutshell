@@ -16,6 +16,7 @@ struct evTable variableTable;
 struct aTable aliasTable;
 char cwd[PATH_MAX];
 
+int execute;
 int pipeFile1;
 int pipeFile2;
 int piping;
