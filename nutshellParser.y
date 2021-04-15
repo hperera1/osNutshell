@@ -123,22 +123,29 @@ args :	STRING					{push_back($$ = new_list(), $1);}
 	;
 
 pipes:	args IN args				{//printf("in args in args\n"); 
+						 execute = 0;
 						 piping = 1; firstPipe = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
 	| args OUT args				{//printf("in args out args\n"); 
+						 execute = 0;
 						 piping = 1; firstPipe = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
 	| args TO args				{//printf("in args to args\n"); 
-						 piping = 1; firstPipe = 1; 
+						 piping = 1; firstPipe = 1; execute = 1;
 						 testingFunction($1); testingFunction($3);
 						 char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
 	| args APPEND args			{//printf("in args append args\n"); 
+						 execute = 0;
 						 piping = 1; firstPipe = 1; appending = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
 	| pipes IN args				{//printf("in pipes in args\n"); 
+						 execute = 0;
 						 piping = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
 	| pipes OUT args			{//printf("in pipes out args\n"); 
+						 execute = 0;
 						 piping = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
 	| pipes TO args				{//printf("in pipes to args\n"); 
+						 execute = 1;
 						 piping = 1; char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
 	| pipes APPEND args			{//printf("in pipes append args"); 
+						 execute = 0;
 						 piping = 1; appending = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
 	;
 
@@ -146,7 +153,11 @@ cmd_line :
 	pipes END				{
 							//printf("in pipes end\n"); 
 							piping = 1;
-							cmd($1);
+							
+							if(execute == 1)
+								cmd($1);
+
+							//printf("postcmd\n");
 							piping = 0;
 
 							if(piping == 0)
@@ -157,7 +168,7 @@ cmd_line :
 							fopen(".output.txt", "w");
 							remove(".input.txt"); 
 							remove(".output.txt"); 
-
+							//printf("?????\n");
 							return 1;
 						}
 	| args END				{
@@ -496,6 +507,7 @@ int cmd(struct linked_list* args)
 			{
 				//printf("before wait\n");
 				wait(NULL);
+				//waitpid(0, NULL, WNOHANG);
 				//printf("%d\n", returnVal);
 				//printf("%d\n", errno);
 				if(returnVal != -1)
@@ -513,7 +525,7 @@ int cmd(struct linked_list* args)
 				continue;
 			//else
 			//	break;
-				
+			
 		}
 	}
 	
