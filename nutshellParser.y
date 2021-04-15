@@ -4,6 +4,7 @@
 #include <pwd.h>
 #include <fnmatch.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -384,7 +385,6 @@ int cmd(struct linked_list* args)
 	}
 	else
 	{
-		int numRuns = 0;
 		int savedStd;
 		savedStd = dup(1);
 		pid_t pid;
@@ -446,10 +446,16 @@ int cmd(struct linked_list* args)
 					returnVal = execv(temp_path, arguments);	
 					dup2(savedStd, 1);
 					close(savedStd);
+
+					if(returnVal == -1)
+						continue;
 				}
 				else
 				{
 					returnVal = execv(temp_path, arguments);
+
+					if(returnVal == -1)
+						continue;
 				}
 				
 				exit(1);
@@ -457,12 +463,18 @@ int cmd(struct linked_list* args)
 			else
 			{
 				wait(NULL);
+
+				if(returnVal != -1)
+					break;
 			}
 				
 			free(temp_path);
 
+			if(returnVal == 0 && errno == 2)
+				break;	
+			
 			if(returnVal == -1)
-				printf("failed");
+				continue;
 			
 		}
 	}
@@ -517,6 +529,25 @@ int startPrintenv()
 
 int unsetEnv(char *variable)
 {
+	int check = 1;
+	if (strcmp(variable, "PATH") == 0){
+		check = 0;
+	}
+	else if(strcmp(variable, "HOME") == 0){
+		check = 0;
+	}
+	else if(strcmp(variable, "PWD") == 0){
+		check = 0;
+	}
+	else if(strcmp(variable, "PROMPT") == 0){
+		check = 0;
+	}
+
+
+	if(check){
+		printf("Cannot unset environment variable: %s\n", variable);
+		return 1;
+	}
 	for (int i = 0; i < variableIndex; i++)
 	{
 		if(strcmp(variableTable.var[i], variable) == 0)
@@ -547,6 +578,8 @@ int changeDirectory(char *directory)
 
 		if (chdir(variableTable.word[0]) == 0) //If we succesfully change directories
 		{
+			getcwd(cwd, sizeof(cwd));
+			strcpy(variableTable.word[0], cwd);
 			return 1;
 		}
 		else
@@ -561,7 +594,8 @@ int changeDirectory(char *directory)
 	{
 		if (chdir(directory) == 0)
 		{
-			strcpy(variableTable.word[0], directory);
+			getcwd(cwd, sizeof(cwd));
+			strcpy(variableTable.word[0], cwd);
 			return 1;
 		}
 		else
