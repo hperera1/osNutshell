@@ -385,6 +385,7 @@ int cmd(struct linked_list* args)
 	}
 	else
 	{
+		int forked = 0;
 		int savedStd;
 		savedStd = dup(1);
 		pid_t pid;
@@ -424,8 +425,14 @@ int cmd(struct linked_list* args)
 			temp_path[tempIter+1] = '\0';
 
 			strcat(&temp_path[tempIter], args->head->value);
+			
+			if(forked == 0)			
+			{
+				forked = 1;
+				pid = fork();
+			}
 
-			if((pid = fork()) == -1)
+			if(pid == -1)
 			{
 				perror("fork error!");
 			}
@@ -449,7 +456,10 @@ int cmd(struct linked_list* args)
 					close(savedStd);
 
 					if(returnVal == -1)
+					{
+						//exit(1);
 						continue;
+					}
 
 					//printf("%d\n", returnVal);
 				}
@@ -464,6 +474,7 @@ int cmd(struct linked_list* args)
 
 					if(returnVal == -1)
 					{
+						//exit(1);
 						continue;
 					}
 					//else
