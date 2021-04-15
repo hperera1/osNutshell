@@ -53,7 +53,7 @@ bool ifNotBuiltIn(char *input){
 
 CHAR		[:.A-Za-z0-9!\/_-~][:.A-Za-z0-9!\/_-~]*
 ANYCHAR		[:)(*&%#@!`;,\.a-zA-Z0-9'/_=~-][:)(*&%#@!`;,\.a-zA-Z0-9'/_=~-]*
-WILD		[/*?][*?]*
+WILD		[*?][*?]*
 CHARS		[:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][:)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -]*
 META		[\<\>\|\"\\\&]
 
@@ -80,46 +80,129 @@ META		[\<\>\|\"\\\&]
 
 [\"]							{BEGIN(string_condition);}
 "${"							{BEGIN(env_condition);}
-[ ]{ANYCHAR}*{WILD}+{ANYCHAR}*				{yylval.string = strdup(yytext) + 1; return WILDCARD;}
-~{CHARS}*						{
-							char* temp = malloc(4096);
-							char* entire_string = malloc(4096);
-							char* new_string = malloc(4096);
+[ ]{ANYCHAR}*{WILD}+{ANYCHAR}*				{yylval.string = strdup(yytext) + 1; printf("b"); return WILDCARD;}
+~{CHARS}*						{printf("%s\n", yytext);
+								char temp[4096];
+								char entire_string[4096];
+								char new_string[4096];
+								char rest_string[4096];
+								strcpy(entire_string, strdup(yytext) + 1);
 
-							strcpy(entire_string, strdup(yytext) + 1);
-
-							if(strcmp(entire_string, "") == 0){
-								printf("Easy Case\n");
-								strcpy(new_string, variableTable.word[1]);
-								strcat(new_string, strdup(yytext) + 1);
-						
-								yylval.string = strdup(new_string);
-							}
-							else{		
-								int stringIter = 0;
-								int tempIter = 0;	
-								printf("hard case");				
-
-								while((entire_string[stringIter] != '/') && (entire_string[stringIter] != '\0')){
-									temp[tempIter++] = entire_string[stringIter++];
-								}							
-								temp[tempIter] = '\0';					
-
-								printf("check");
-
-								struct passwd* pwd = getpwnam(temp);
-								strcpy(new_string, pwd->pw_dir);
-								strcpy(temp, &entire_string[stringIter]);
-								strcat(new_string, temp);
+								printf("%s\n", entire_string);
 								
-								printf("check");
-								
-								strcpy(yylval.string, new_string);
-								printf("%s\n", yylval.string);
-							}
-								printf("new string: %s\n", yylval.string);
+								if(strcmp(entire_string, "") == 0){
+									printf("Easy Case\n");
+									strcpy(new_string, variableTable.word[1]);
+									strcat(new_string, strdup(yytext) + 1);
 
-								return STRING;
+									yylval.string = strdup(new_string);
+									printf("%s\n", yylval.string);
+									return STRING;
+								}
+								else{
+									int stringIter = 0;
+									int tempIter = 0;
+									struct passwd* pwd;
+									printf("hard case\n");
+
+									while((entire_string[stringIter] != '/') && (entire_string[stringIter] != '0')){
+										temp[tempIter++] = entire_string[stringIter++];
+									}
+									
+									temp[tempIter] = '\0';
+									printf("temp: %s\n", temp);
+
+									pwd = getpwnam(temp);
+									if(pwd == NULL){
+										tempIter = 0;
+										strcpy(new_string, variableTable.word[1]);
+										for (; stringIter < strlen(entire_string) ; tempIter++, stringIter++){
+											rest_string[tempIter] = entire_string[stringIter];
+										}
+										rest_string[tempIter] = '\0';
+										strcat(new_string, rest_string);
+										
+										printf("Final: %s\n", new_string);
+										yylval.string = strdup(new_string);
+										return STRING;
+									}
+									else{
+										tempIter = 0;
+										strcpy(new_string, pwd->pw_dir);
+										for (; stringIter < strlen(entire_string) ; tempIter++, stringIter++){
+											rest_string[tempIter] = entire_string[stringIter];
+										}
+										rest_string[tempIter] = '\0';
+										printf("rest: %s\n", rest_string);
+										
+										strcat(new_string, rest_string);									
+
+										printf("Final: %s\n", new_string);
+										
+										yylval.string = strdup(new_string);
+									
+										return STRING;
+									}
+								}
+							}
+" ~"{ANYCHAR}*						{	printf("test\n");
+								char temp[4096];
+								char entire_string[4096];
+								char new_string[4096];
+								char rest_string[4096];
+								strcpy(entire_string, strdup(yytext) + 2);
+
+								printf("entire string: %s\n", entire_string);
+
+								if(strcmp(entire_string, "") == 0){
+									strcpy(new_string, variableTable.word[1]);
+									strcat(new_string, strdup(yytext) + 2);
+
+									yylval.string = strdup(new_string);
+									printf("%s\n", yylval.string);
+									return STRING;
+								}
+								else{
+									int stringIter = 0;
+									int tempIter = 0;
+									struct passwd* pwd;
+									
+									while((entire_string[stringIter] != '/') && (entire_string[stringIter] != '0')){
+										temp[tempIter++] = entire_string[stringIter++];
+									}
+
+									temp[tempIter] = '\0';
+									printf("temp: %s\n", temp);
+									
+									pwd = getpwnam(temp);
+									if(pwd == NULL){
+										tempIter = 0;
+										strcpy(new_string, variableTable.word[1]);
+										for(; stringIter < strlen(entire_string); tempIter++, stringIter++){
+											rest_string[tempIter] = entire_string[stringIter];
+										}
+										printf("rest: %s\n", rest_string);
+										rest_string[tempIter] = '\0';
+										strcat(new_string, rest_string);
+							
+										printf("Final: %s\n", new_string);
+										yylval.string = strdup(new_string); 
+										return STRING;
+									}
+									else{
+										tempIter = 0;
+										strcpy(new_string, pwd->pw_dir);
+										for(; stringIter < strlen(entire_string); tempIter++, stringIter++){
+											rest_string[tempIter] = entire_string[stringIter];
+										}
+										rest_string[tempIter] = '\0';
+										printf("rest: %s\n", rest_string);
+										strcat(new_string, rest_string);
+										printf("Final: %s\n", new_string);
+										yylval.string = strdup(new_string);
+										return STRING;
+									}
+								}
 							}
 testing							{return TESTING;}
 "\n"							{return END;}
@@ -134,13 +217,13 @@ testing							{return TESTING;}
 								free( yycopy );
 							}
 							else {
-								yylval.string = strdup(yytext);
+								yylval.string = strdup(yytext); printf("a");
 								return STRING;
 
 							}
 							}
 [ ]{ANYCHAR}+						{
-							yylval.string = strdup(yytext) + 1; return STRING;
+							yylval.string = strdup(yytext) + 1; printf("%s\n", yylval.string); return STRING;
 							}
 [ ]							{ };
 
