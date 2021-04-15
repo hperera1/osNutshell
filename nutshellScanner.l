@@ -87,15 +87,18 @@ META		[\<\>\|\"\\\&]
 
 							yylval.string = strdup(temp);
 
-	 		free(temp);
+			free(temp);
 			return STRING;
 		}
+
 testing		{return TESTING;}
 "\n"		{return END;}
 "<"		{yylval.string = strdup(yytext); return IN;}
 ">"		{return OUT;}
 ">>"		{return APPEND;}
 "|"		{return TO;}
+"2>"{CHAR}+	{return RE;}
+" 2>&1"		{return ERROUT;}
 
 {ANYCHAR}+		{if(ifAlias(yytext)) {
 				char *yycopy = strdup( expandAlias(yytext));

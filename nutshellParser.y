@@ -12,7 +12,6 @@
 int yylex();
 int yyerror(char *s);
 
-// linked list
 struct node {
 	struct node*	next;
 	char*		value;
@@ -41,12 +40,11 @@ void push_back(struct linked_list *list, char* value) {
 }
 
 void pushback_wildcard(struct linked_list *list, char* wildcard){
-
 	int num_matches = 0;
-
 	DIR *d;
 	struct dirent *dir;
 	d = opendir(".");
+
 	if (d) {
 		while ((dir = readdir(d)) != NULL){
 			if(fnmatch(wildcard, dir->d_name, 0) == 0){
@@ -88,6 +86,7 @@ char* pipeHandler(struct linked_list* args1, struct linked_list* args2);
 void appender(char* src, char* dest);
 void copier(char* src, char* dest);
 void printOutput();
+void printInput();
 
 // built in functions including helper/tester functions
 int testingFunction(struct linked_list *args);
@@ -108,48 +107,37 @@ char* expandEnv(char* text);
 %union {char *string; struct linked_list *list;}
 
 %start cmd_line
-%token <string> TESTING STRING END IN OUT TO ENVSTRING WILDCARD APPEND
+%token <string> TESTING STRING END IN OUT TO ENVSTRING WILDCARD APPEND RE ERROUT
 %type <list> args pipes
 %%
 
 args :	STRING					{push_back($$ = new_list(), $1);}
 	| args STRING				{push_back($$ = $1, $2);}
-  | args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
-  | args WILDCARD				{pushback_wildcard($$ = $1, $2);}
+	| args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
+	| args WILDCARD				{pushback_wildcard($$ = $1, $2);}
 	;
 
-pipes:	args IN args				{//printf("in args in args\n"); 
-						 piping = 1; firstPipe = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
-	| args OUT args				{//printf("in args out args\n"); 
-						 piping = 1; firstPipe = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
-	| args TO args				{//printf("in args to args\n"); 
-						 piping = 1; firstPipe = 1; 
-						 testingFunction($1); testingFunction($3);
-						 char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
-	| args APPEND args			{//printf("in args append args\n"); 
-						 piping = 1; firstPipe = 1; appending = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
-	| pipes IN args				{//printf("in pipes in args\n"); 
-						 piping = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
-	| pipes OUT args			{//printf("in pipes out args\n"); 
-						 piping = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
-	| pipes TO args				{//printf("in pipes to args\n"); 
-						 piping = 1; char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
-	| pipes APPEND args			{//printf("in pipes append args"); 
-						 piping = 1; appending = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+pipes:	args IN args				{printf("1\n"); piping = 1; firstPipe = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
+	| args OUT args				{printf("2\n"); piping = 1; firstPipe = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+	| args TO args				{printf("3\n"); testingFunction($1); testingFunction($3);
+piping = 1; firstPipe = 1; char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
+	| args APPEND args			{printf("4\n"); piping = 1; firstPipe = 1; appending = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes IN args				{printf("5\n"); piping = 1; char* fileName = inHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes OUT args			{printf("6\n"); piping = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes TO args				{printf("7\n"); testingFunction($1); testingFunction($3);
+piping = 1; char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes APPEND args			{printf("8\n"); piping = 1; appending = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
+	| pipes RE END				{printf("pipes re end\n");}
+	| pipes ERROUT END			{testingFunction($1); printf("pipes errout end\n"); return 1;}
 	;
 
 cmd_line :
 	| pipes END				{
-							//printf("in pipes end\n"); 
 							piping = 1;
 							cmd($1);
 							piping = 0;
 
-							if(piping == 0)
-							{
-								printOutput();
-							}
-
+							printOutput();
 							fopen(".output.txt", "w");
 							remove(".input.txt"); 
 							remove(".output.txt"); 
@@ -157,7 +145,6 @@ cmd_line :
 							return 1;
 						}
 	| args END				{
-							//printf("in args end\n");
 							firstPipe = 0;
 							piping = 0;
 							testingFunction($1);
@@ -221,10 +208,11 @@ char* pipeHandler(struct linked_list* args1, struct linked_list* args2)
 {
 	char* fileName = ".input.txt";
 
-	// setting flags
+	printInput();
+	printOutput();
+
 	cmd(args1);
 	firstPipe = 0;
-
 	copier(".output.txt", fileName);
 	fopen(".output.txt", "w");
 
@@ -258,10 +246,9 @@ void appender(char* src, char* dest)
 {
 	FILE* file1;
 	FILE* file2;
-	char c;
-
 	file1 = fopen(src, "r");
 	file2 = fopen(dest, "a");
+	char c;
 
 	if(!file1 && !file2)
 	{
@@ -283,9 +270,10 @@ void appender(char* src, char* dest)
 void printOutput()
 {
 	FILE* file;
-	char c;
 	file = fopen(".output.txt", "r");
+	char c;
 	c = fgetc(file);
+
 	while(c != EOF)
 	{
 		printf("%c", c);
@@ -296,15 +284,24 @@ void printOutput()
 	fopen(".output.txt", "w");
 }
 
+void printInput()
+{
+	FILE* file; 
+	file = fopen(".input.txt", "r");
+	char c;
+	c = fgetc(file);
+
+	while(c != EOF)
+	{
+		printf("%c", c);
+		c = fgetc(file);
+	}
+
+	fclose(file);
+}
 
 int cmd(struct linked_list* args)
 {
-	if(firstPipe == 1)
-	{
-		//pipeFile1 = open("input.txt", O_WRONLY|O_CREAT, 0666);
-		//pipeFile2 = open("output.txt", O_WRONLY|O_CREAT, 0666);
-	}
-
 	if(strcmp(args->head->value, "printenv") == 0){
 		if(args->length == 1){
 			startPrintenv();
@@ -439,10 +436,12 @@ int cmd(struct linked_list* args)
 	
 				if(piping == 1)
 				{
+					printf("did we get in here?\n");
 					dup2(pipeFile2, 1);
 					returnVal = execv(temp_path, arguments);	
 					dup2(savedStd, 1);
 					close(savedStd);
+					printf("post exec\n");
 				}
 				else
 				{
@@ -472,10 +471,12 @@ int testingFunction(struct linked_list* args)
 {
 	printf("Input: ");
 	struct node* current = args->head;
+
 	while (current != 0){
 		printf("%s ", current->value);
 		current = current->next;
 	}
+
 	printf("\n");
 	return 1;
 }
