@@ -167,7 +167,7 @@ cmd_line :
 							fopen(".output.txt", "w");
 							remove(".input.txt"); 
 							remove(".output.txt"); 
-							printf("?????\n");
+							//printf("?????\n");
 							return 1;
 						}
 	| args END				{
