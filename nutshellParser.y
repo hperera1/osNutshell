@@ -330,7 +330,6 @@ int cmd(struct linked_list* args)
 	else if(strcmp(args->head->value, "bye") == 0){
 		if(args->length == 1){
 			exit(1);
-			return 1;
 		}
 
 		printf("syntax error");
@@ -582,7 +581,7 @@ int unsetEnv(char *variable)
 	}
 
 
-	if(check){
+	if(check == 0){
 		printf("Cannot unset environment variable: %s\n", variable);
 		return 1;
 	}

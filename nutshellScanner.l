@@ -67,13 +67,21 @@ META		[\<\>\|\"\\\&]
 <string_condition>[\"]					{BEGIN(INITIAL);}
 
 <env_condition>{CHARS}+					{
+							int check = 1;
 							yylval.string = strdup(yytext);
 							for (int i = 0; i < variableIndex; i++){
 								if (strcmp(variableTable.var[i], yylval.string) == 0){
-									yylval.string = variableTable.word[i];
+									input(); check = 0;
+									char *yycopy = strdup(variableTable.word[i]);
+
+									for (int i = strlen(yycopy) - 1 ; i >= 0; --i){
+										unput(yycopy[i]);
+									}
+									free(yycopy);
+									BEGIN(INITIAL);
 								}
 							}
-							return STRING;
+							if(check == 1){return STRING;}
 							}
 
 <env_condition>[}]					{BEGIN(INITIAL);}
@@ -210,7 +218,8 @@ testing							{return TESTING;}
 ">"							{return OUT;}
 "|"							{return TO;}
 
-{ANYCHAR}+						{if(ifAlias(yytext)) {
+{ANYCHAR}+						{
+							if(ifAlias(yytext)) {
 								char *yycopy = strdup( expandAlias(yytext));
 								for (int i = strlen(expandAlias(yytext)) - 1 ; i >= 0; --i)
 									unput(yycopy[i]);
@@ -222,9 +231,7 @@ testing							{return TESTING;}
 
 							}
 							}
-[ ]{ANYCHAR}+						{
-							yylval.string = strdup(yytext) + 1; return STRING;
-							}
+[ ]{ANYCHAR}+						{yylval.string = strdup(yytext) + 1; return STRING;}
 [ ]							{ };
 
 %%
