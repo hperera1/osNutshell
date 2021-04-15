@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <fnmatch.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
@@ -385,6 +386,7 @@ int cmd(struct linked_list* args)
 	}
 	else
 	{
+		int forked = 0;
 		int savedStd;
 		savedStd = dup(1);
 		pid_t pid;
@@ -411,6 +413,7 @@ int cmd(struct linked_list* args)
 
 		for (int i = 0; i < numPaths; i++){
 			int tempIter = 0;
+			returnVal = 0;
 			char* temp_path = (char*) malloc(PATH_MAX*sizeof(char));
 	
 			while((pathVar[pathIter] != colon) && (pathVar[pathIter] != '\0')){
@@ -423,8 +426,14 @@ int cmd(struct linked_list* args)
 			temp_path[tempIter+1] = '\0';
 
 			strcat(&temp_path[tempIter], args->head->value);
+			
+			if(forked == 0)			
+			{
+				forked = 1;
+				pid = fork();
+			}
 
-			if((pid = fork()) == -1)
+			if(pid == -1)
 			{
 				perror("fork error!");
 			}
@@ -448,34 +457,63 @@ int cmd(struct linked_list* args)
 					close(savedStd);
 
 					if(returnVal == -1)
+					{
+						//exit(1);
 						continue;
+					}
+
+					//printf("%d\n", returnVal);
 				}
 				else
 				{
+					//printf("%s\n", temp_path);
 					returnVal = execv(temp_path, arguments);
+				
+					//printf("%d\n", returnVal);
+					//printf("%d\n", errno);
+					//printf("uishgiudshgiujdshgkljdsg\n");
 
 					if(returnVal == -1)
+					{
+						//exit(1);
 						continue;
+					}
+					//else
+					//	break;
+		
+					//if(returnVal != -1 || returnVal == NULL || errno != 2 || errno == NULL)
+					//{
+						//printf("haha! you found me!\n");
+						//break;
+					//}
+					//printf("%d\n", returnVal);
 				}
-				
+
+				//printf("hererere?\n");
 				exit(1);
 			}
 			else
 			{
+				//printf("before wait\n");
 				wait(NULL);
-
+				//printf("%d\n", returnVal);
+				//printf("%d\n", errno);
 				if(returnVal != -1)
 					break;
 			}
 				
+			printf("wowowowow\n");
+			printf("%d\n%d\n", returnVal, errno);
 			free(temp_path);
 
 			if(returnVal == 0 && errno == 2)
-				break;	
-			
+				break;
+
 			if(returnVal == -1)
 				continue;
-			
+			//else
+			//	break;
+				
 		}
 	}
 	
