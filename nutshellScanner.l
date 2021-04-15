@@ -81,36 +81,36 @@ META		[\<\>\|\"\\\&]
 [\"]							{BEGIN(string_condition);}
 "${"							{BEGIN(env_condition);}
 [ ]{ANYCHAR}*{WILD}+{ANYCHAR}*				{yylval.string = strdup(yytext) + 1; printf("b"); return WILDCARD;}
-~{CHARS}*						{printf("%s\n", yytext);
+~{CHARS}*						{
 								char temp[4096];
 								char entire_string[4096];
 								char new_string[4096];
 								char rest_string[4096];
 								strcpy(entire_string, strdup(yytext) + 1);
 
-								printf("%s\n", entire_string);
+								//printf("%s\n", entire_string);
 								
 								if(strcmp(entire_string, "") == 0){
-									printf("Easy Case\n");
+									//printf("Easy Case\n");
 									strcpy(new_string, variableTable.word[1]);
 									strcat(new_string, strdup(yytext) + 1);
 
 									yylval.string = strdup(new_string);
-									printf("%s\n", yylval.string);
+									//printf("%s\n", yylval.string);
 									return STRING;
 								}
 								else{
 									int stringIter = 0;
 									int tempIter = 0;
 									struct passwd* pwd;
-									printf("hard case\n");
+									//printf("hard case\n");
 
 									while((entire_string[stringIter] != '/') && (entire_string[stringIter] != '0')){
 										temp[tempIter++] = entire_string[stringIter++];
 									}
 									
 									temp[tempIter] = '\0';
-									printf("temp: %s\n", temp);
+									//printf("temp: %s\n", temp);
 
 									pwd = getpwnam(temp);
 									if(pwd == NULL){
@@ -122,7 +122,7 @@ META		[\<\>\|\"\\\&]
 										rest_string[tempIter] = '\0';
 										strcat(new_string, rest_string);
 										
-										printf("Final: %s\n", new_string);
+										//printf("Final: %s\n", new_string);
 										yylval.string = strdup(new_string);
 										return STRING;
 									}
@@ -133,11 +133,11 @@ META		[\<\>\|\"\\\&]
 											rest_string[tempIter] = entire_string[stringIter];
 										}
 										rest_string[tempIter] = '\0';
-										printf("rest: %s\n", rest_string);
+										//printf("rest: %s\n", rest_string);
 										
 										strcat(new_string, rest_string);									
 
-										printf("Final: %s\n", new_string);
+										//printf("Final: %s\n", new_string);
 										
 										yylval.string = strdup(new_string);
 									
@@ -145,21 +145,21 @@ META		[\<\>\|\"\\\&]
 									}
 								}
 							}
-" ~"{ANYCHAR}*						{	printf("test\n");
+" ~"{ANYCHAR}*						{
 								char temp[4096];
 								char entire_string[4096];
 								char new_string[4096];
 								char rest_string[4096];
 								strcpy(entire_string, strdup(yytext) + 2);
 
-								printf("entire string: %s\n", entire_string);
+								//printf("entire string: %s\n", entire_string);
 
 								if(strcmp(entire_string, "") == 0){
 									strcpy(new_string, variableTable.word[1]);
 									strcat(new_string, strdup(yytext) + 2);
 
 									yylval.string = strdup(new_string);
-									printf("%s\n", yylval.string);
+									//printf("%s\n", yylval.string);
 									return STRING;
 								}
 								else{
@@ -172,7 +172,7 @@ META		[\<\>\|\"\\\&]
 									}
 
 									temp[tempIter] = '\0';
-									printf("temp: %s\n", temp);
+									//printf("temp: %s\n", temp);
 									
 									pwd = getpwnam(temp);
 									if(pwd == NULL){
@@ -181,11 +181,11 @@ META		[\<\>\|\"\\\&]
 										for(; stringIter < strlen(entire_string); tempIter++, stringIter++){
 											rest_string[tempIter] = entire_string[stringIter];
 										}
-										printf("rest: %s\n", rest_string);
+										//printf("rest: %s\n", rest_string);
 										rest_string[tempIter] = '\0';
 										strcat(new_string, rest_string);
 							
-										printf("Final: %s\n", new_string);
+										//printf("Final: %s\n", new_string);
 										yylval.string = strdup(new_string); 
 										return STRING;
 									}
@@ -196,9 +196,9 @@ META		[\<\>\|\"\\\&]
 											rest_string[tempIter] = entire_string[stringIter];
 										}
 										rest_string[tempIter] = '\0';
-										printf("rest: %s\n", rest_string);
+										//printf("rest: %s\n", rest_string);
 										strcat(new_string, rest_string);
-										printf("Final: %s\n", new_string);
+										//printf("Final: %s\n", new_string);
 										yylval.string = strdup(new_string);
 										return STRING;
 									}
@@ -217,13 +217,13 @@ testing							{return TESTING;}
 								free( yycopy );
 							}
 							else {
-								yylval.string = strdup(yytext); printf("a");
+								yylval.string = strdup(yytext);
 								return STRING;
 
 							}
 							}
 [ ]{ANYCHAR}+						{
-							yylval.string = strdup(yytext) + 1; printf("%s\n", yylval.string); return STRING;
+							yylval.string = strdup(yytext) + 1; return STRING;
 							}
 [ ]							{ };
 

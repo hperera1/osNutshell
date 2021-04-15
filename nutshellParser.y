@@ -1,5 +1,7 @@
 %{
 #include <dirent.h>
+#include <sys/types.h>
+#include <pwd.h>
 #include <fnmatch.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -565,28 +567,80 @@ int setPath(char* variable, char* word)
 	for (int i = 0; i < variableIndex; i++){
 		if(strcmp(variableTable.var[i], variable) == 0)
 		{
-			char* tempPath = (char*)malloc(PATH_MAX*sizeof(char));
-			char* home_text = (char*)malloc(PATH_MAX*sizeof(char));
-			strcpy(home_text, ":");
-			strcpy(&home_text[1], variableTable.word[1]);
-			int iter = 0;
+			char new_path[4096];
+			char tempPath[4096]; 
+			char userName[4096];
+			char entireName[4096];
+			int tempIter = 0;
+			int userIter = 0;
+		
+			strcpy(entireName, word);
+			printf("%s\n", new_path);
+			printf("%d\n", strlen(entireName));
 
-			while (*word) {
-				if (strstr(word, ":~") == word) {
-					strcpy(&tempPath[iter], home_text);
-					iter += strlen(home_text);
-					word += 2;
+			for (int j = 0; j < strlen(entireName); j++){
+				printf("Starting j = %d\n", j);
+				if(word[j] == ':'){
+					if(word[j+1] == '~'){
+						tempPath[tempIter] = entireName[j];
+						tempPath[tempIter + 1] = '\0';
+						printf("temp path before cat: %s\n", tempPath);
+						strcat(new_path, tempPath);
+						printf("new path after cat: %s\n", new_path);
+
+						strcpy(tempPath, "");
+						printf("temp path after cat: %s\n", tempPath);
+						tempIter = 0;
+
+						//find the userName
+						strcpy(userName, "");
+						printf("Reset username: %s with length %d\n", userName, strlen(userName));
+						
+						struct passwd* pwd;
+						userIter = 0;
+						for(int k = j+1; k < strlen(word); k++){
+							printf("next char in username: %c\n", word[k]);
+							if((word[k] == '/') || (word[k] == '0')){
+								break;
+							}
+							strncat(userName,word+k,1);
+							printf("current username: %s\n", userName);
+						}
+						printf("%s with length: %d\n", userName, strlen(userName));
+						j += strlen(userName);
+						printf("picking up on %c at j = %d\n", entireName[j+1], j+1);
+						userName[userIter] = '\0';
+						printf("user name: %s, and size of user name: %d\n", userName, strlen(userName));
+
+						pwd = getpwnam(userName);
+						if(pwd == NULL){
+							strcat(tempPath, variableTable.word[1]);
+							tempIter += strlen(variableTable.word[1]);
+							printf("temp path b/c null %s\n", tempPath);
+						}
+						else{
+							strcpy(tempPath, pwd->pw_dir);
+							tempIter += strlen(pwd->pw_dir);
+							printf("temp path %s", tempPath);
+						}
+					}
+					else{
+						printf("tempIter: %d, character being added: %c at j %d\n", tempIter, word[j], j);
+						tempPath[tempIter++] = word[j];
+					}
 				}
 				else{
-					tempPath[iter++] = *word++;
+					printf("tempIter: %d, charcter being added: %c at j %d\n", tempIter, word[j], j);
+					tempPath[tempIter++] = word[j];
 				}
-			}
-		tempPath[iter] = '\0';
 
-		strcpy(variableTable.word[i], tempPath);
-		printf("%s\n", tempPath);
-		free(tempPath);
-		free(home_text);
+			}
+
+			tempPath[tempIter] = '\0';
+			strcat(new_path, tempPath);
+
+		printf("%s\n", new_path);
+		strcpy(variableTable.word[i], new_path);
 		}
 	}
 	return 1;
