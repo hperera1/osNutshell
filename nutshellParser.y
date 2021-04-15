@@ -617,7 +617,10 @@ int changeDirectory(char *directory)
 		else{
 			parent[0] = '\0';
 		}
-		setAlias("..", parent);
+		if(strcmp(aliasTable.word[0], variableTable.word[1]) != 0){
+			setAlias(".", variableTable.word[1]);
+			setAlias("..", parent);
+		}
 		chdir(variableTable.word[1]);
 		return 1;
 	}
@@ -645,8 +648,10 @@ int changeDirectory(char *directory)
 				parent[0] = '\0';
 			}
 			chdir(cur);
-			setAlias(".", cur);
-			setAlias("..", parent);
+			if(strcmp(aliasTable.word[0], cur) != 0){
+				setAlias(".", cur);
+				setAlias("..", parent);
+			}
 			return 1;
 		}
 		else
@@ -678,8 +683,10 @@ int changeDirectory(char *directory)
 				parent[0] = '\0';
 			}
 			chdir(cur);
-			setAlias(".", cur);
-			setAlias("..", parent);
+			if(strcmp(aliasTable.word[0], cur) != 0){
+				setAlias(".", cur);
+				setAlias("..", parent);
+			}
 			return 1;
 		}
 		else
