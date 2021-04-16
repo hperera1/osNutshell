@@ -118,8 +118,8 @@ char* expandEnv(char* text);
 
 args :	STRING					{push_back($$ = new_list(), $1);}
 	| args STRING				{push_back($$ = $1, $2);}
-  | args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
-  | args WILDCARD				{pushback_wildcard($$ = $1, $2);}
+	| args ENVSTRING			{$2 = expandEnv($2); push_back($$ = $1, $2);}
+	| args WILDCARD				{pushback_wildcard($$ = $1, $2);}
 	;
 
 pipes:	args IN args				{//printf("in args in args\n"); 
@@ -131,7 +131,7 @@ pipes:	args IN args				{//printf("in args in args\n");
 						 piping = 1; firstPipe = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
 	| args TO args				{//printf("in args to args\n"); 
 						 piping = 1; firstPipe = 1; execute = 1;
-						 testingFunction($1); testingFunction($3);
+						 //testingFunction($1); testingFunction($3);
 						 char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
 	| args APPEND args			{//printf("in args append args\n"); 
 						 execute = 0;
@@ -176,7 +176,7 @@ cmd_line :
 							//printf("in args end\n");
 							firstPipe = 0;
 							piping = 0;
-							testingFunction($1);
+							//testingFunction($1);
 							cmd($1);
  
 							return 1;
@@ -497,7 +497,6 @@ int cmd(struct linked_list* args)
 
 					if(returnVal == -1)
 					{
-						//exit(1);
 						continue;
 					}
 
@@ -509,7 +508,6 @@ int cmd(struct linked_list* args)
 
 					if(returnVal == -1)
 					{
-						//exit(1);
 						continue;
 					}
 				}
