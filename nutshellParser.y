@@ -204,11 +204,12 @@ char* outHandler(struct linked_list* args1, struct linked_list* args2)
 {
 	char* fileName = ".input.txt";
 
-	testingFunction(args1);
-	testingFunction(args2);
+	//testingFunction(args1);
+	//testingFunction(args2);
 
 	int savedStd;
 	savedStd = dup(1);
+
 	//pipeFile2 = open(args2->head->value, O_WRONLY|O_CREAT, 0666);	
 	//dup2(pipeFile2, 1);
 	cmd(args1);
@@ -256,6 +257,12 @@ void copier(char* src, char* dest)
 	savedErr = dup(2);
 	dup2(savedErr, 1);
 	*/
+
+	//if(access(".output.txt", F_OK) == -1)
+	//{
+	//	printf("creating output.txt\n");
+	//	pipeFile2 = open(".output.txt", O_WRONLY|O_CREAT, 0666);
+	//}
 
 	pid_t pid;
 	if((pid = fork()) == -1)
@@ -315,15 +322,28 @@ void printOutput()
 
 int cmd(struct linked_list* args)
 {
-	if(firstPipe == 1)
-	{
+	int otherStd;
+	otherStd = dup(1);
+
+	//if(firstPipe == 1)
+	//{
 		//pipeFile1 = open("input.txt", O_WRONLY|O_CREAT, 0666);
 		//pipeFile2 = open("output.txt", O_WRONLY|O_CREAT, 0666);
+	//}
+
+	if(piping == 1)
+	{
+		pipeFile1 = open(".input.txt", O_WRONLY|O_CREAT, 0666);
+		pipeFile2 = open(".output.txt", O_WRONLY|O_CREAT, 0666);
+		dup2(pipeFile2, 1);
 	}
 
 	if(strcmp(args->head->value, "printenv") == 0){
 		if(args->length == 1){
 			startPrintenv();
+			dup2(otherStd, 1); 
+			close(otherStd);
+			
 			return 1;
 		}
 		
@@ -333,6 +353,9 @@ int cmd(struct linked_list* args)
 	else if(strcmp(args->head->value, "alias") == 0){
 		if(args->length == 1){
 			listAlias();
+			dup2(otherStd, 1); 
+			close(otherStd);
+
 			return 1;
 		}
 		else if(args->length == 3){
