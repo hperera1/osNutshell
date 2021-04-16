@@ -133,7 +133,7 @@ pipes:	args IN args				{//printf("in args in args\n");
 						 piping = 1; firstPipe = 1; execute = 1;
 						 testingFunction($1); testingFunction($3);
 						 char* fileName = pipeHandler($1, $3); push_back($$ = $3, fileName);}
-	| args APPEND args			{//printf("in args append args\n"); 
+	| args APPEND args			{printf("in args append args\n"); 
 						 execute = 0;
 						 piping = 1; firstPipe = 1; appending = 1; char* fileName = outHandler($1, $3); push_back($$ = $3, fileName);}
 	| pipes IN args				{//printf("in pipes in args\n"); 
