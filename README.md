@@ -46,3 +46,12 @@ The life of normal command will follow the following flow: the command and the a
 In the case that we need to pipe information somewhere else, I will be referring to I/O redirection as piping as well, we can recursively deal with those pipes until the end. I make use of some flags that I have defined for myself to control the flow of the execution and these three situations get dealt with using three functions called in, out, and pipe handler, each one being used of course for input, output, and pipe handling.
 
 Other details about our shell is that we store important information in the variable and alias table, just information that the user can set and make use of (although we also make use of it in several places). Wildcard matching works just as one would expect it to in a usual shell. We include the aliases "." and ".." which represent the current directory and the previous directory, they are updated whenever cd is called. 
+
+**Known Issues**
+The tee command does not work.
+Commands which would hang in standard shell will hang in our shell.
+command bye must be at the end of the commands.txt that is fed into the nutshell: ie. "./nutshell < commands.txt > results.txt 2>&1", commands.txt must end in bye or there will be a bunch of syntax errors, and the command will not terminate because it's continiously printing syntax error.
+Commands that do not exist 
+-No prompt saying that the command did not exist, but a new line awaiting text will print
+- Will cause a minor issue where you will need to type bye multiple times to exit the shell. In results.txt this will appear as having many input lines at the very end.
+- This is because every child process will be created, depending on the number of paths in PATH will not be deleted. It does not cause issues in running commands since we have a check for only allowing one process to output the results of a non-built in command to account for causes where a function is present in multiple paths in the PATH variable. 
