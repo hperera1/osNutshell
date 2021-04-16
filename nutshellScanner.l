@@ -59,6 +59,7 @@ META		[\<\>\|\"\\\&]
 
 %x string_condition
 %x env_condition
+%x senv_condition
 %%
 
 <string_condition>{CHARS}*"${"{CHARS}+"}"{CHARS}*	{yylval.string = strdup( yytext ); return ENVSTRING;}
@@ -86,8 +87,29 @@ META		[\<\>\|\"\\\&]
 
 <env_condition>[}]					{BEGIN(INITIAL);}
 
+<senv_condition>{CHARS}+				{
+							int check = 1;
+							yylval.string = strdup(yytext);
+							for(int i = 0; i < variableIndex; i++){
+								if(strcmp(variableTable.var[i], yylval.string) == 0){
+									input(); check = 0;
+									char *yycopy = strdup(variableTable.word[i]);
+									for (int i = strlen(yycopy) - 1; i >= 0; --i){
+										unput(yycopy[i]);
+									}
+									unput(' ');
+									free(yycopy); 
+									BEGIN(INITIAL);
+								}
+							}
+							if(check == 1){return STRING;}
+							}
+
+<senv_condition>[}]					{BEGIN(INITIAL);}
+
 [\"]							{BEGIN(string_condition);}
 "${"							{BEGIN(env_condition);}
+" ${"							{BEGIN(senv_condition);}
 [ ]{ANYCHAR}*{WILD}+{ANYCHAR}*				{yylval.string = strdup(yytext) + 1; return WILDCARD;}
 ~{CHARS}*						{
 								char temp[4096];
@@ -216,6 +238,7 @@ testing							{return TESTING;}
 "\n"							{return END;}
 "<"							{yylval.string = strdup(yytext); return IN;}
 ">"							{return OUT;}
+">>"							{return APPEND;}
 "|"							{return TO;}
 
 {ANYCHAR}+						{
