@@ -335,11 +335,12 @@ int cmd(struct linked_list* args)
 	{
 		pipeFile1 = open(".input.txt", O_WRONLY|O_CREAT, 0666);
 		pipeFile2 = open(".output.txt", O_WRONLY|O_CREAT, 0666);
-		dup2(pipeFile2, 1);
+		//dup2(pipeFile2, 1);
 	}
 
 	if(strcmp(args->head->value, "printenv") == 0){
 		if(args->length == 1){
+			if(piping == 1) dup2(pipeFile2, 1);
 			startPrintenv();
 			dup2(otherStd, 1); 
 			close(otherStd);
@@ -352,6 +353,7 @@ int cmd(struct linked_list* args)
 	}
 	else if(strcmp(args->head->value, "alias") == 0){
 		if(args->length == 1){
+			if(piping == 1) dup2(pipeFile2, 1);
 			listAlias();
 			dup2(otherStd, 1); 
 			close(otherStd);
